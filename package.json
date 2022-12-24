@@ -1,0 +1,15 @@
+{
+  "type": "module",
+  "name": "master-sturct",
+  "version": "1.0.0",
+  "description": "Master Struct is a library for creating and managing data structures in TypeScript. But also let's you store metadata about the structure which let's your create ui's for the structure.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DeepDoge/master-struct.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DeepDoge/master-struct/issues"
+  },
+  "homepage": "https://github.com/DeepDoge/master-struct#readme",
+  "devDependencies": {}
+}
