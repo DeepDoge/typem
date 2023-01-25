@@ -18,11 +18,16 @@ export class BigIntField extends MasterField<BigIntFieldType>
         return BigInt(value)
     }
     
-    protected _validate(value: bigint): boolean
+    protected parser(value: bigint): bigint
     {
-        return typeof value === "bigint" &&
-            (this.options.min === undefined || value >= this.options.min) &&
-            (this.options.max === undefined || value <= this.options.max)
+        if (typeof value !== "bigint")
+            throw new Error("Value is not a bigint")
+        if (this.options.min !== undefined && value < this.options.min)
+            throw new Error("Value is too small")
+        if (this.options.max !== undefined && value > this.options.max)
+            throw new Error("Value is too big")
+        
+        return value
     }
     
 }

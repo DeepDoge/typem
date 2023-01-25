@@ -18,11 +18,16 @@ export class NumberField extends MasterField<NumberFieldType>
         return value
     }
     
-    protected _validate(value: number): boolean
+    protected parser(value: number): number
     {
-        return typeof value === "number" &&
-            (this.options.min === undefined || value >= this.options.min) &&
-            (this.options.max === undefined || value <= this.options.max)
+        if (typeof value !== "number")
+            throw new Error("Value is not a number")
+        if (this.options.min !== undefined && value < this.options.min)
+            throw new Error("Value is too small")
+        if (this.options.max !== undefined && value > this.options.max)
+            throw new Error("Value is too big")
+        
+        return value
     }
     
 }

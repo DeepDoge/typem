@@ -18,11 +18,16 @@ export class StringField extends MasterField<StringFieldType>
         return value
     }
     
-    protected _validate(value: string): boolean
+    protected parser(value: string): string
     {
-        return typeof value === "string" &&
-            (this.options.minLength === undefined || value.length >= this.options.minLength) &&
-            (this.options.maxLength === undefined || value.length <= this.options.maxLength)
+        if (typeof value !== "string")
+            throw new Error("Value is not a string")
+        if (this.options.minLength !== undefined && value.length < this.options.minLength)
+            throw new Error("Value is too short")
+        if (this.options.maxLength !== undefined && value.length > this.options.maxLength)
+            throw new Error("Value is too long")
+        
+        return value
     }
 }
 
