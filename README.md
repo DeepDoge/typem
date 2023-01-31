@@ -83,28 +83,31 @@ value.name // string
 ## Extending with custom validators
 You can create your own validators
 ```ts
-const even = <T extends mv.Validator<number>>(validator: T) => mv.createValidator<mv.infer<T>>((value: unknown) =>
-{
-    validator(value)
-    if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
-})
+const even = <T extends mv.Validator<number>>(validator: T) =>
+    mv.createValidator<mv.infer<T>>((value: unknown) =>
+    {
+        validator(value)
+        if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
+    })
 const evenNumber = even(mv.number)
 
-class MyClass {}
+class MyClass { }
 const myClass = mv.createValidator<MyClass>((value: unknown) => 
 {
     if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
 })
 
-const email = <T extends mv.Validator<string>>(validator: T) => mv.createValidator<`${string[0]}${string}@${string[0]}${string}.${string[0]}${string}`>((value: unknown) =>
-{
-    validator(value)
-    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) throw new TypeError(`Expected email, got ${value}`)
-})
+const email = <T extends mv.Validator<string>>(validator: T) =>
+    mv.createValidator<`${string[0]}${string}@${string[0]}${string}.${string[0]}${string}`>((value: unknown) =>
+    {
+        validator(value)
+        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) throw new TypeError(`Expected email, got ${value}`)
+    })
 
 // then you can use it like this
 const shortEmail = email(mv.maxLength(mv.string, 50))
-const test = "foo@bar.baz" satisfies mv.infer<typeof shortEmail> 
+const test = "foo@bar.baz" satisfies mv.infer<typeof shortEmail> // Passes
+const test2 = "foo@" satisfies mv.infer<typeof shortEmail> // Fails
 ```
 
 # Inspired by
