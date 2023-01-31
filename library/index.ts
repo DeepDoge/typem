@@ -169,7 +169,7 @@ export namespace ms
 
     export type infer<T> = T extends Validator<infer U> ? U : never
 
-    const test = object({
+/*     const test = object({
         0: oneOf("a", "b", "c"),
         1: oneOf(1, 2, 3),
         2: union(literal("a"), literal("b"), literal("c"), literal(1), literal(2), literal(3)),
@@ -186,5 +186,5 @@ export namespace ms
         h: array(nullable(min(number, 0))),
     })
 
-    const testValue = test.parse(null)
+    const testValue = test.parse(null) */
 }
