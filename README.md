@@ -61,5 +61,27 @@ const value = ms.parseUnknown(member, unknownValue) // throws error if value is 
 value.name // string 
 ```
 
+## Extending with custom validators
+You can create your own validators
+```ts
+const even = <T extends Validator<number>>(validator: T) =>
+        ms.createValidator(
+            (value: unknown): value is TypeOfValidator<T> => validator(value) && value % 2 === 0,
+            (value: unknown) => `Expected ${value} to be even`
+        )
+const evenNumber = even(number)
+// Or 
+const evenNumber = ms.createValidator(
+    (value: unknown): value is number => typeof value === 'number' && value % 2 === 0,
+    (value: unknown) => `Expected ${value} to be even number`
+)
+
+class MyClass { }
+const myClass = ms.createValidator(
+    (value: unknown): value is MyClass => value instanceof MyClass,
+    (value: unknown) => `Expected ${value} to be instance of MyClass`
+)
+```
+
 # Inspired by
 https://github.com/DeepDoge/cute-struct

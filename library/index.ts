@@ -41,14 +41,14 @@ export namespace ms
     export const union = <T extends Validator<any>[]>(...validators: T) => createValidator((value: unknown): value is TypeOfValidator<T[number]> => validators.some(validator => validator(value)), (value: unknown) => `Expected one of ${validators.map(validator => validator.error(value)).join(", ")}, got ${value?.toString()}`)
     export const intersection = <T extends Validator<any>[]>(...validators: T) => createValidator((value: unknown): value is UnionToIntersection<TypeOfValidator<T[number]>> => validators.every(validator => validator(value)), (value: unknown) => `Expected intersection of ${validators.map(validator => validator.error(value)).join(", ")}, got ${value?.toString()}`)
 
-    export const min = <T extends Validator<any>>(validator: T, min: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value >= min, (value: unknown) => `Expected ${validator.error(value)} >= ${min}, got ${value}`)
-    export const max = <T extends Validator<any>>(validator: T, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value <= max, (value: unknown) => `Expected ${validator.error(value)} <= ${max}, got ${value}`)
-    export const range = <T extends Validator<any>>(validator: T, min: number, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value >= min && value <= max, (value: unknown) => `Expected ${validator.error(value)} >= ${min} && <= ${max}, got ${value}`)
+    export const min = <T extends Validator<number>>(validator: T, min: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value >= min, (value: unknown) => `Expected ${validator.error(value)} >= ${min}, got ${value}`)
+    export const max = <T extends Validator<number>>(validator: T, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value <= max, (value: unknown) => `Expected ${validator.error(value)} <= ${max}, got ${value}`)
+    export const range = <T extends Validator<number>>(validator: T, min: number, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value >= min && value <= max, (value: unknown) => `Expected ${validator.error(value)} >= ${min} && <= ${max}, got ${value}`)
 
-    export const length = <T extends Validator<any>>(validator: T, length: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length === length, (value: unknown) => `Expected ${validator.error(value)}.length === ${length}, got ${value}`)
-    export const minLength = <T extends Validator<any>>(validator: T, min: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length >= min, (value: unknown) => `Expected ${validator.error(value)}.length >= ${min}, got ${value}`)
-    export const maxLength = <T extends Validator<any>>(validator: T, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length <= max, (value: unknown) => `Expected ${validator.error(value)}.length <= ${max}, got ${value}`)
-    export const rangeLength = <T extends Validator<any>>(validator: T, min: number, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length >= min && value.length <= max, (value: unknown) => `Expected ${validator.error(value)}.length >= ${min} && <= ${max}, got ${value}`)
+    export const length = <T extends Validator<string>>(validator: T, length: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length === length, (value: unknown) => `Expected ${validator.error(value)}.length === ${length}, got ${value}`)
+    export const minLength = <T extends Validator<string>>(validator: T, min: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length >= min, (value: unknown) => `Expected ${validator.error(value)}.length >= ${min}, got ${value}`)
+    export const maxLength = <T extends Validator<string>>(validator: T, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length <= max, (value: unknown) => `Expected ${validator.error(value)}.length <= ${max}, got ${value}`)
+    export const rangeLength = <T extends Validator<string>>(validator: T, min: number, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length >= min && value.length <= max, (value: unknown) => `Expected ${validator.error(value)}.length >= ${min} && <= ${max}, got ${value}`)
 
     export function parse<T extends Validator<any>>(validator: T, value: TypeOfValidator<T>): TypeOfValidator<T>
     {
@@ -61,52 +61,3 @@ export namespace ms
         return parse(validator, value as TypeOfValidator<T>)
     }
 }
-
-// Usage
-const { string, number, nullable, object, min, oneOf, union, literal, rangeLength, intersection } = ms
-
-const person = object({
-    name: rangeLength(string, 1, 32),
-    age: nullable(min(number, 0)),
-    sex: union(literal('man'), literal('woman')),
-    // or you can use `oneOf` instead of `union` and `literal`
-    city: nullable(oneOf(
-        'Kraków', 
-        'Oaxaca', 
-        'Moscow', 
-        'Kabul', 
-        'Baghdad', 
-        'Kuala, Lumpur', 
-        'Jeddah', 
-        'Riyadh', 
-        'Mogadishu', 
-        'Dubai', 
-        'Abu Dhabi', 
-        'Sanaa', 
-        'Ibadan', 
-        'Taizz', 
-        'Tehran'
-    )) 
-})
-
-const memberRole = oneOf('admin', 'moderator', 'user')
-const member = intersection(person, object({
-    id: string,
-    role: memberRole
-}))
-
-const unknownValue: unknown = null
-
-// You can use if statement to check if value is valid
-// if its valid typescript will infer type of value
-if (member(unknownValue)) 
-{
-    // So you can use it like this
-    unknownValue.name // string
-}
-
-// Or you can use parse function to throw error if value is invalid
-const value = ms.parseUnknown(member, unknownValue) // throws error if value is invalid
-// If value is valid typescript will infer type of value
-// Then you can use it like this
-value.name // string
