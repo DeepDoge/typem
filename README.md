@@ -48,8 +48,13 @@ if its valid typescript will infer type of value
 ```ts
 if (member(unknownValue)) 
 {
-    // So you can use it like this
+    // So you can use it like this with the correct type
     unknownValue.name // string
+}
+else
+{
+    unknownValue // unknown
+    unknownValue.name // Error
 }
 ```
 
@@ -57,7 +62,7 @@ Or you can use parse function to throw error if value is invalid
 If value is valid typescript will infer type of value
 ```ts
 const value = ms.parseUnknown(member, unknownValue) // throws error if value is invalid
-// Then you can use it like this
+// Then you can use it like this with the correct type
 value.name // string 
 ```
 
