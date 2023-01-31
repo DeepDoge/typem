@@ -122,46 +122,46 @@ export namespace ms
     })
 
 
-    export const min = <T extends Validator<any>>(validator: T, min: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const min = <T extends Validator<number>>(validator: T, min: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value < min) throw new TypeError(`Expected ${min} or more, got ${value}`)
     })
-    export const max = <T extends Validator<any>>(validator: T, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const max = <T extends Validator<number>>(validator: T, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value > max) throw new TypeError(`Expected ${max} or less, got ${value}`)
     })
-    export const range = <T extends Validator<any>>(validator: T, min: number, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const range = <T extends Validator<number>>(validator: T, min: number, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value < min) throw new TypeError(`Expected ${min} or more, got ${value}`)
         if (value > max) throw new TypeError(`Expected ${max} or less, got ${value}`)
     })
 
-    export const length = <T extends Validator<any>>(validator: T, length: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const length = <T extends Validator<string>>(validator: T, length: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value.length !== length) throw new TypeError(`Expected length of ${length}, got ${value.length}`)
     })
-    export const minLength = <T extends Validator<any>>(validator: T, min: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const minLength = <T extends Validator<string>>(validator: T, min: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value.length < min) throw new TypeError(`Expected length of ${min} or more, got ${value.length}`)
     })
-    export const maxLength = <T extends Validator<any>>(validator: T, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const maxLength = <T extends Validator<string>>(validator: T, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value.length > max) throw new TypeError(`Expected length of ${max} or less, got ${value.length}`)
     })
-    export const rangeLength = <T extends Validator<any>>(validator: T, min: number, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const rangeLength = <T extends Validator<string>>(validator: T, min: number, max: number) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (value.length < min) throw new TypeError(`Expected length of ${min} or more, got ${value.length}`)
         if (value.length > max) throw new TypeError(`Expected length of ${max} or less, got ${value.length}`)
     })
 
-    export const pattern = <T extends Validator<any>>(validator: T, pattern: RegExp) => createValidator<ms.infer<T>>((value: unknown) =>
+    export const pattern = <T extends Validator<string>>(validator: T, pattern: RegExp) => createValidator<ms.infer<T>>((value: unknown) =>
     {
         validator(value)
         if (!pattern.test(value)) throw new TypeError(`Expected pattern of ${pattern}, got ${value}`)
@@ -188,3 +188,4 @@ export namespace ms
 
     const testValue = test.parse(null) */
 }
+

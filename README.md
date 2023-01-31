@@ -96,7 +96,15 @@ const myClass = ms.createValidator<MyClass>((value: unknown) =>
     if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
 })
 
-const email = ms.pattern(ms.string, /^\S+@\S+\.\S+$/)
+const email = <T extends ms.Validator<string>>(validator: T) => ms.createValidator<ms.infer<T>>((value: unknown) =>
+{
+    validator(value)
+    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) throw new TypeError(`Expected email, got ${value}`)
+})
+
+// then you can use it like this
+const shortEmail = email(ms.maxLength(ms.string, 50))
+const shortEmail = ms.maxLength(email(ms.string), 50)
 ```
 
 # Inspired by
