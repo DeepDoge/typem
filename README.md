@@ -64,12 +64,12 @@ value.name // string
 ## Extending with custom validators
 You can create your own validators
 ```ts
-const even = <T extends Validator<number>>(validator: T) =>
+const even = <T extends ms.Validator<number>>(validator: T) =>
         ms.createValidator(
-            (value: unknown): value is TypeOfValidator<T> => validator(value) && value % 2 === 0,
+            (value: unknown): value is ms.TypeOfValidator<T> => validator(value) && value % 2 === 0,
             (value: unknown) => `Expected ${value} to be even`
         )
-const evenNumber = even(number)
+const evenNumber = even(ms.number)
 // Or 
 const evenNumber = ms.createValidator(
     (value: unknown): value is number => typeof value === 'number' && value % 2 === 0,
