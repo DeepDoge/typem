@@ -4,7 +4,7 @@ Easy to use and easy to extend.
 
 # Installation
 ```bash
-npm install https://github.com/DeepDoge/master-validator.git
+npm install https://github.com/DeepDoge/master-validator.git -D
 ```
 
 # Usage
