@@ -41,6 +41,20 @@ const member = intersection(person, object({
     id: string,
     role: memberRole
 }))
+/* 
+    Type of member:
+    {
+        name: string
+        age: number | null
+        sex: 'man' | 'woman'
+        city: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 'Baghdad' | 
+                'Kuala, Lumpur' | 'Jeddah' | 'Riyadh' | 'Mogadishu' | 'Dubai' | 
+                'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 'Taizz' | 'Tehran' | null
+        id: string
+        role: 'admin' | 'moderator' | 'user'
+    }
+*/
+
 ```
 
 You can use if statement to check if value is valid<br/>
