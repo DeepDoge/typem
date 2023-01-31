@@ -9,8 +9,8 @@ npm install https://github.com/DeepDoge/master-validator.git -D
 
 # Usage
 ```ts
-import { ms } from 'master-validator/library';
-const { string, number, nullable, object, min, oneOf, union, literal, rangeLength, intersection } = ms
+import { mv } from 'master-validator/library';
+const { string, number, nullable, object, min, oneOf, union, literal, rangeLength, intersection } = mv
 
 const person = object({
     name: rangeLength(string, 1, 32),
