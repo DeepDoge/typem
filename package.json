@@ -1,15 +1,15 @@
 {
   "type": "module",
-  "name": "master-sturct",
+  "name": "master-validator",
   "version": "1.0.0",
-  "description": "Master Struct is a library for creating and managing data structures in TypeScript. But also let's you store metadata about the structure which let's your create ui's for the structure.",
+  "description": "See README.md",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DeepDoge/master-struct.git"
+    "url": "git+https://github.com/DeepDoge/master-validator.git"
   },
   "bugs": {
-    "url": "https://github.com/DeepDoge/master-struct/issues"
+    "url": "https://github.com/DeepDoge/master-validator/issues"
   },
-  "homepage": "https://github.com/DeepDoge/master-struct#readme",
+  "homepage": "https://github.com/DeepDoge/master-validator#readme",
   "devDependencies": {}
 }
