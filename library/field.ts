@@ -2,139 +2,49 @@ export type Obj = { [key: string]: unknown };
 export type Any = string | number | boolean | null | undefined | object | symbol | bigint;
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never;
 
-interface Validator<T>
+interface ValidatorFunction<T> 
 {
-    (value: unknown): value is T
+    (value: unknown): value is T;
+}
+interface Validator<T> extends ValidatorFunction<T> 
+{
+    error: (value: unknown) => string;
 }
 type TypeOfValidator<T extends Validator<any>> = T extends Validator<infer U> ? U : never
 
-
-function string(value: unknown): value is string
+function createValidator<T>(validator: ValidatorFunction<T>, error: (value: unknown) => string): Validator<T>
 {
-    return typeof value === "string"
+    const v = validator as Validator<T>
+    v.error = error
+    return v
 }
 
-function number(value: unknown): value is number
-{
-    return typeof value === "number"
-}
+const string = createValidator((value: unknown): value is string => typeof value === "string", (value: unknown) => `Expected string, got ${typeof value}`)
+const number = createValidator((value: unknown): value is number => typeof value === "number", (value: unknown) => `Expected number, got ${typeof value}`)
+const boolean = createValidator((value: unknown): value is boolean => typeof value === "boolean", (value: unknown) => `Expected boolean, got ${typeof value}`)
+const symbol = createValidator((value: unknown): value is symbol => typeof value === "symbol", (value: unknown) => `Expected symbol, got ${typeof value}`)
+const bigint = createValidator((value: unknown): value is bigint => typeof value === "bigint", (value: unknown) => `Expected bigint, got ${typeof value}`)
 
-function boolean(value: unknown): value is boolean
-{
-    return typeof value === "boolean"
-}
+const nullable = <T extends Validator<any>>(validator: T) => createValidator((value: unknown): value is TypeOfValidator<T> | null => value === null || validator(value), (value: unknown) => `Expected null or ${validator.error(value)}, got ${typeof value}`)
+const undefinable = <T extends Validator<any>>(validator: T) => createValidator((value: unknown): value is TypeOfValidator<T> | undefined => value === undefined || validator(value), (value: unknown) => `Expected undefined or ${validator.error(value)}, got ${typeof value}`)
 
-function nullable<T>(validator: Validator<T>): Validator<T | null>
-{
-    return (value: unknown): value is T | null => value === null || validator(value)
-}
+const literal = <T extends Any>(value: T) => createValidator((v: unknown): v is T => v === value, (v: unknown) => `Expected ${value?.toString()}, got ${v?.toString()}`)
+const oneOf = <T extends Any>(...values: T[]) => createValidator((value: unknown): value is T => values.includes(value as T), (value: unknown) => `Expected one of ${values.map(v => v?.toString()).join(", ")}, got ${value?.toString()}`)
 
-function object<T extends Obj>(validators: { [K in keyof T]: Validator<T[K]> }): Validator<T>
-{
-    return (value: unknown): value is T =>
-    {
-        if (typeof value !== "object" || value === null) return false
+const object = <T extends Obj>(validators: { [K in keyof T]: Validator<T[K]> }) => createValidator((value: unknown): value is T => value !== null && typeof value === "object" && Object.entries(validators).every(([key, validator]) => validator((value as T)[key])), (value: unknown) => `Expected object, got ${typeof value}`)
+const array = <T extends Validator<any>>(validator: T) => createValidator((value: unknown): value is TypeOfValidator<T>[] => Array.isArray(value) && value.every(v => validator(v)), (value: unknown) => `Expected array, got ${typeof value}`)
 
-        for (const key in validators)
-        {
-            if (!validators[key]((value as any)[key])) return false
-        }
+const union = <T extends Validator<any>[]>(...validators: T) => createValidator((value: unknown): value is TypeOfValidator<T[number]> => validators.some(validator => validator(value)), (value: unknown) => `Expected one of ${validators.map(validator => validator.error(value)).join(", ")}, got ${value?.toString()}`)
+const intersection = <T extends Validator<any>[]>(...validators: T) => createValidator((value: unknown): value is UnionToIntersection<TypeOfValidator<T[number]>> => validators.every(validator => validator(value)), (value: unknown) => `Expected intersection of ${validators.map(validator => validator.error(value)).join(", ")}, got ${value?.toString()}`)
 
-        return true
-    }
-}
+const min = <T extends Validator<any>>(validator: T, min: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value >= min, (value: unknown) => `Expected ${validator.error(value)} >= ${min}, got ${value}`)
+const max = <T extends Validator<any>>(validator: T, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value <= max, (value: unknown) => `Expected ${validator.error(value)} <= ${max}, got ${value}`)
+const range = <T extends Validator<any>>(validator: T, min: number, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value >= min && value <= max, (value: unknown) => `Expected ${validator.error(value)} >= ${min} && <= ${max}, got ${value}`)
 
-function array<T>(validator: Validator<T>): Validator<T[]>
-{
-    return (value: unknown): value is T[] =>
-    {
-        if (!Array.isArray(value)) return false
-
-        for (const item of value)
-        {
-            if (!validator(item)) return false
-        }
-
-        return true
-    }
-}
-
-function union<T extends Validator<any>[]>(...validators: T): Validator<TypeOfValidator<T[number]>>
-{
-    return (value: unknown): value is TypeOfValidator<T[number]> =>
-    {
-        for (const validator of validators)
-        {
-            if (validator(value)) return true
-        }
-
-        return false
-    }
-}
-
-function intersection<T extends Validator<any>[]>(...validators: T): Validator<UnionToIntersection<TypeOfValidator<T[number]>>>
-{
-    return (value: unknown): value is UnionToIntersection<TypeOfValidator<T[number]>> =>
-    {
-        for (const validator of validators)
-        {
-            if (!validator(value)) return false
-        }
-
-        return true
-    }
-}
-
-function min<T extends number>(validator: Validator<T>, min: T): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value >= min
-}
-
-function max<T extends number>(validator: Validator<T>, max: T): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value <= max
-}
-
-function range<T extends number>(validator: Validator<T>, min: T, max: T): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value >= min && value <= max
-}
-
-function minLength<T extends string>(validator: Validator<T>, min: number): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value.length >= min
-}
-
-function maxLength<T extends string>(validator: Validator<T>, max: number): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value.length <= max
-}
-
-function lengthRange<T extends string>(validator: Validator<T>, min: number, max: number): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value.length >= min && value.length <= max
-}
-
-function length<T extends string>(validator: Validator<T>, length: number): Validator<T>
-{
-    return (value: unknown): value is T => validator(value) && value.length === length
-}
-
-// TODO: waiting for TS update for <const T>
-function literal<T extends Any>(value: T): Validator<T>
-{
-    return (v: unknown): v is T => v === value
-}
-
-function oneOf<T extends Any>(...values: readonly T[]): Validator<T>
-{
-    return (value: unknown): value is T =>
-    {
-        for (const v of values)
-            if (v === value) return true
-        return false
-    }
-}
+const length = <T extends Validator<any>>(validator: T, length: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length === length, (value: unknown) => `Expected ${validator.error(value)}.length === ${length}, got ${value}`)
+const minLength = <T extends Validator<any>>(validator: T, min: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length >= min, (value: unknown) => `Expected ${validator.error(value)}.length >= ${min}, got ${value}`)
+const maxLength = <T extends Validator<any>>(validator: T, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length <= max, (value: unknown) => `Expected ${validator.error(value)}.length <= ${max}, got ${value}`)
+const rangeLength = <T extends Validator<any>>(validator: T, min: number, max: number) => createValidator((value: unknown): value is TypeOfValidator<T> => validator(value) && value.length >= min && value.length <= max, (value: unknown) => `Expected ${validator.error(value)}.length >= ${min} && <= ${max}, got ${value}`)
 
 function parse<T>(validator: Validator<T>, value: T): T
 {
