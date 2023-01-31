@@ -60,7 +60,7 @@ const member = intersection(person, object({
 You can use if statement to check if value is valid<br/>
 if its valid typescript will infer type of value
 ```ts
-if (member(unknownValue)) 
+if (member.is(unknownValue)) 
 {
     // So you can use it like this with the correct type
     unknownValue.name // string
@@ -75,7 +75,7 @@ else
 Or you can use parse function to throw error if value is invalid
 If value is valid typescript will infer type of value
 ```ts
-const value = ms.parseUnknown(member, unknownValue) // throws error if value is invalid
+const value = member.parse(unknownValue) // throws error if value is invalid
 // Then you can use it like this with the correct type
 value.name // string 
 ```
@@ -83,23 +83,18 @@ value.name // string
 ## Extending with custom validators
 You can create your own validators
 ```ts
-const even = <T extends ms.Validator<number>>(validator: T) =>
-        ms.createValidator(
-            (value: unknown): value is ms.TypeOfValidator<T> => validator(value) && value % 2 === 0,
-            (value: unknown) => `Expected ${value} to be even`
-        )
+const even = <T extends ms.Validator<number>>(validator: T) => ms.createValidator<ms.infer<T>>((value: unknown) =>
+{
+    validator(value)
+    if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
+})
 const evenNumber = even(ms.number)
-// Or 
-const evenNumber = ms.createValidator(
-    (value: unknown): value is number => typeof value === 'number' && value % 2 === 0,
-    (value: unknown) => `Expected ${value} to be even number`
-)
 
-class MyClass { }
-const myClass = ms.createValidator(
-    (value: unknown): value is MyClass => value instanceof MyClass,
-    (value: unknown) => `Expected ${value} to be instance of MyClass`
-)
+class MyClass {}
+const myClass = ms.createValidator<MyClass>((value: unknown) => 
+{
+    if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
+})
 ```
 
 # Inspired by
