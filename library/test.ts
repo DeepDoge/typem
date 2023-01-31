@@ -14,7 +14,7 @@ const data: MasterUtils.Infer<typeof test> = {
     age: 20,
 }
 
-const dataUnknown: Record<string, unknown> = {
+const dataUnknown = {
     name: "John",
     age: 20,
 }
