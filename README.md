@@ -54,9 +54,9 @@ if (member(unknownValue))
 ```
 
 Or you can use parse function to throw error if value is invalid
+If value is valid typescript will infer type of value
 ```ts
 const value = ms.parseUnknown(member, unknownValue) // throws error if value is invalid
-// If value is valid typescript will infer type of value
 // Then you can use it like this
 value.name // string 
 ```
