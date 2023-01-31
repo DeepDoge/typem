@@ -95,6 +95,8 @@ const myClass = ms.createValidator<MyClass>((value: unknown) =>
 {
     if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
 })
+
+const email = ms.pattern(ms.string, /^\S+@\S+\.\S+$/)
 ```
 
 # Inspired by
