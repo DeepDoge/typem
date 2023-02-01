@@ -1,8 +1,8 @@
-import { $gte, $intersection, $literal, $null, $number, $object, $oneOf, $optional, $rangeLength, $string, $union } from "../library"
+import { $gt, $gte, $intersection, $literal, $null, $number, $object, $oneOf, $optional, $rangeLength, $string, $union } from "../library"
 
 const $person = $object({
-    name: $rangeLength($string, 1, 32),
-    age: $union($null, $gte($number, 0)),
+    name: $string($rangeLength(1, 32)),
+    age: $union($null, $number($gt(0))),
     sex: $union($literal('man'), $literal('woman')),
     // or you can use `oneOf` instead of `union` and `literal`
     city: $optional($oneOf(
@@ -29,6 +29,9 @@ const $member = $intersection($person, $object({
     id: $string,
     role: $memberRole
 }))
+
+$string(minLength(1), maxLength(32))
+$union($null, $number($gte(0)))
 
 /* 
     Type of $member:
