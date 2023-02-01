@@ -79,8 +79,6 @@ value.name // string
 Or if you only wanna check if the type is valid with typescript and not check value on runtime
 ```ts
 $member.typecheck({ ... }) // doesn't throw error, gives typescript error if type is invalid
-// Or
-const foo = { ... } satisfies $infer<typeof $member> // same as above
 ```
 
 ## Extending with custom validators
