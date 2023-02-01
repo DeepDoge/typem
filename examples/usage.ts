@@ -29,13 +29,6 @@ const $member = $intersection($person, $object({
     id: $string,
     role: $memberRole
 }))
-const a = $member.typecheck({
-    name: 'John',
-    age: 30,
-    sex: 'man',
-    id: '1234567890',
-    role: 'admin'
-})
 
 /* 
     Type of $member:
