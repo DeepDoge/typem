@@ -23,7 +23,7 @@ export function $validator<T, P extends any[]>(parser: (value: unknown, ...param
 {
     return (...params: P): Validator<T> =>
     {
-        const fn: Validator<T> = <U>(validator: (t: Validator<T>) => Validator<U>) => validator(fn)
+        const fn: Validator<T> = {} as any/* <U>(validator: (t: Validator<T>) => Validator<U>) => validator(fn) */
         fn.assert = (value: unknown) => parser(value, ...params)
         fn.parse = (value: unknown) =>
         {
