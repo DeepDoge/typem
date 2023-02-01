@@ -155,6 +155,32 @@ export namespace mv
         {
             for (const validator of validators) validator(value)
         })
+    
+    export const not = <T extends Validator<any>>(validator: T) =>
+        createValidator<Exclude<mv.infer<T>, null | undefined>>((value: unknown) =>
+        {
+            try
+            {
+                validator(value)
+            }
+            catch (error)
+            {
+                return
+            }
+            throw new TypeError(`Expected not ${validator.name}, got ${value}`)
+        })
+
+/*     export const tuple = <T extends Validator<any>[]>(...validators: T) =>
+        createValidator<{ [K in keyof T]: mv.infer<T[K]> }>((value: unknown) =>
+        {
+            if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${typeof value}`)
+            if (value.length !== validators.length) throw new TypeError(`Expected array of length ${validators.length}, got ${value.length}`)
+            for (let i = 0; i < validators.length; i++)
+            {
+                const validator = validators[i]
+                validator?.(value[i])
+            }
+        }) */
 
     export const gt = <T extends Validator<number | bigint>>(validator: T, min: number | bigint) =>
         createValidator<mv.infer<T>>((value: unknown) =>
