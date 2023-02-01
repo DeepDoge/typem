@@ -1,4 +1,4 @@
-type Obj = { [key: string]: unknown }
+type ValidatorObj = { [key: string]: $Validator<any> }
 type Any = string | number | boolean | null | undefined | object | symbol | bigint
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never
 
@@ -86,32 +86,46 @@ export const $unknown = $validator<unknown>((value: unknown) =>
 })
 export const $any = $validator<any>((_: unknown) => { })
 
-export const $partial = <T extends Obj>(obj: T) =>
-    $validator<Partial<{ [K in keyof T]: $infer<T[K]> }>>((value: unknown) =>
+
+export const $object = <T extends ValidatorObj>(obj: T) =>
+    $validator<{ [k in keyof T]: $infer<T[k]> }>((value: unknown) =>
     {
         if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
-        for (const key in obj)
-        {
-            if (obj.hasOwnProperty(key))
-            {
-                const validator: any = obj[key]
-                validator((value as any)[key])
-            }
-        }
+        for (const [key, validator] of Object.entries(obj))
+            validator.parse((value as { [K in keyof T]: $infer<T[K]> })[key])
     })
-export const $object = <T extends Obj>(obj: T) =>
-    $validator<{ [K in keyof T]: $infer<T[K]> }>((value: unknown) =>
+export const $partial = <T extends ValidatorObj, K extends (keyof T)[]>(obj: T, ...keys: K) =>
+    $validator<Partial<{ [k in K[number]]: $infer<T[k]> }> & { [k in Exclude<keyof T, K[number]>]: $infer<T[k]> }>((value: unknown) =>
     {
         if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
-        for (const key in obj)
+        for (const [key, validator] of Object.entries(obj))
         {
-            if (obj.hasOwnProperty(key))
-            {
-                const validator: any = obj[key]
-                validator((value as any)[key])
-            }
+            const v = (value as { [K in keyof T]: $infer<T[K]> })[key]
+            if (v === undefined && (keys.length === 0 || keys.includes(key as any))) continue
+            validator.parse(v)
         }
     })
+export const $required = <T extends ValidatorObj, K extends (keyof T)[]>(obj: T, ...keys: K) =>
+    $validator<{ [k in K[number]]: $infer<T[k]> } & Partial<{ [k in Exclude<keyof T, K[number]>]: $infer<T[k]> }>>((value: unknown) =>
+    {
+        if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
+        for (const [key, validator] of Object.entries(obj))
+        {
+            const v = (value as { [K in keyof T]: $infer<T[K]> })[key]
+            if (v === undefined && !keys.includes(key as any)) continue
+            validator.parse(v)
+        }
+    })
+
+export const $object2 = <T extends ValidatorObj, M extends 'partial' | 'required', K extends (keyof T)[]>(obj: T, mode?: M, ...keys: K):
+    M extends 'partial' ? ReturnType<typeof $partial<T, K>> : 
+    M extends 'required' ? ReturnType<typeof $required<T, K>> :
+    ReturnType<typeof $object<T>> =>
+{
+    if (mode === 'partial') return $partial(obj, ...keys) as any
+    if (mode === 'required') return $required(obj, ...keys) as any
+    return $object(obj) as any
+}
 
 export const $array = <T extends $Validator<any>>(validator: T) =>
     $validator<$infer<T>[]>((value: unknown) =>
@@ -136,13 +150,11 @@ export const $literal = <T extends Any>(value: T) =>
     {
         if (v !== value) throw new TypeError(`Expected ${value?.toString()}, got ${v}`)
     })
-export const $oneOf = <T extends Any>(...values: T[]) =>
-    $validator<T>((value: unknown) =>
+export const $oneOf = <T extends Any[]>(...values: T) =>
+    $validator<T[number]>((value: unknown) =>
     {
         for (const v of values)
-        {
-            if (v === value) return
-        }
+            if (value === v) return
         throw new TypeError(`Expected one of ${values.map(v => v?.toString()).join(', ')}, got ${value}`)
     })
 
@@ -168,13 +180,6 @@ export const $intersection = <T extends $Validator<any>[]>(...validators: T) =>
     $validator<UnionToIntersection<$infer<T[number]>>>((value: unknown) =>
     {
         for (const validator of validators) validator(value)
-    })
-
-export const $optional = <T extends $Validator<any>>(validator: T) =>
-    $validator<null | undefined | $infer<T>>((value: unknown) =>
-    {
-        if (value === null || value === undefined) return
-        validator(value)
     })
 
 export const $not = <T extends $Validator<any>>(validator: T) =>
