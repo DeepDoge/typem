@@ -14,7 +14,7 @@ export interface Validator<T> /* extends ValidatorPipe<T> */
     assert(value: unknown): asserts value is T
     is(value: unknown): value is T
     parse(value: unknown): T
-    typecheck(value: T): T
+    type(value: T): T
 }
 
 export type $infer<T> = T extends Validator<infer U> ? U : never
@@ -42,7 +42,7 @@ export function $validator<T, P extends any[]>(parser: (value: unknown, ...param
                 return false
             }
         }
-        fn.typecheck = (value: T): T => value
+        fn.type = (value: T): T => value
         return fn
     }
 }
