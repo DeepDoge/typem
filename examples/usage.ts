@@ -38,7 +38,7 @@ const $member = $intersection($person, $object({
         sex: 'man' | 'woman'
         city?: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 
             'Baghdad' | 'Kuala, Lumpur' | 'Jeddah' | 'Riyadh' | 'Mogadishu' | 
-            'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 'Taizz' | 'Tehran'
+            'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 'Taizz' | 'Tehran' | null | undefined
         id: string
         role: 'admin' | 'moderator' | 'user'
     }
