@@ -84,7 +84,7 @@ $member.typecheck({ ... }) // doesn't throw error, gives typescript error if typ
 ## Extending with custom validators
 You can create your own validators
 ```ts
-const even = <T extends $Validator<number>>(validator: T) =>
+const even = <T extends $Validator<number | bigint>>(validator: T) =>
     $validator<$infer<T>>((value: unknown) =>
     {
         validator(value)
