@@ -91,13 +91,17 @@ const even = <T extends $Validator<number>>(validator: T) =>
         if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
     })
 const evenNumber = even($number)
+```
 
+```ts
 class MyClass { }
 const myClass = $validator<MyClass>((value: unknown) => 
 {
     if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
 })
+```
 
+```ts
 const email = <T extends $Validator<string>>(validator: T) =>
     $validator<`${string[0]}${string}@${string[0]}${string}.${string[0]}${string}`>((value: unknown) =>
     {
