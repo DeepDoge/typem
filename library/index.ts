@@ -118,12 +118,12 @@ export const $required = <T extends ValidatorObj, K extends (keyof T)[]>(obj: T,
     })
 
 export const $object2 = <T extends ValidatorObj, M extends 'partial' | 'required', K extends (keyof T)[]>(obj: T, mode?: M, ...keys: K):
-    M extends 'partial' ? ReturnType<typeof $partial<T, K>> : 
-    M extends 'required' ? ReturnType<typeof $required<T, K>> :
+    M extends 'partial' ? K['length'] extends 0 ? ReturnType<typeof $required<T, K>> : ReturnType<typeof $partial<T, K>> :
+    M extends 'required' ? K['length'] extends 0 ? ReturnType<typeof $object<T>> : ReturnType<typeof $required<T, K>> :
     ReturnType<typeof $object<T>> =>
 {
-    if (mode === 'partial') return $partial(obj, ...keys) as any
-    if (mode === 'required') return $required(obj, ...keys) as any
+    if (mode === 'partial') return keys.length === 0 ? $required(obj, ...keys) : $partial(obj, ...keys) as any
+    if (mode === 'required') return keys.length === 0 ? $object(obj) : $required(obj, ...keys) as any
     return $object(obj) as any
 }
 
