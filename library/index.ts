@@ -57,7 +57,6 @@ export const $number = $validator((value: unknown): asserts value is number =>
 })
 export const $int = $validator((value: unknown): asserts value is number =>
 {
-    if (typeof value !== "number") throw new TypeError(`Expected number, got ${value}`)
     if (!Number.isInteger(value)) throw new TypeError(`Expected integer, got ${value}`)
 })
 export const $bigint = $validator((value: unknown): asserts value is bigint =>
