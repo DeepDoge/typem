@@ -1,31 +1,19 @@
-import { $infer, $maxLength, $number, $string, $Validator, $validator } from "../library"
+import { $bigint, $number, $validator, Validator } from "../library"
 
-const even = <T extends $Validator<number>>(validator: T) =>
-    $validator<$infer<T>>((value: unknown) =>
-    {
-        validator(value)
-        if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
-    })
-const evenNumber = even($number)
-
-class MyClass { }
-const myClass = $validator<MyClass>((value: unknown) => 
-{
-    if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
+class MyClass {}
+const $myClass = $validator((value: unknown): asserts value is MyClass => {
+    if (!(value instanceof MyClass)) throw new Error('Not a MyClass')
 })
 
-const email = <T extends $Validator<string>>(validator: T) =>
-    $validator<`${string[0]}${string}@${string[0]}${string}.${string[0]}${string}`>((value: unknown) =>
-    {
-        validator(value)
-        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) throw new TypeError(`Expected email, got ${value}`)
-    })
+const $oddNumber = $validator((value: unknown): asserts value is number => {
+    if (typeof value !== 'number' || value % 2 === 0) throw new Error('Not an odd number')
+})
 
-// then you can use it like this
-const shortEmail = email($maxLength($string, 50))
+const $odd = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>): asserts value is T => {
+    validator.assert(value)
+    if (typeof value === 'number' && value % 2 === 0) throw new Error('Not an odd number')
+    if (typeof value === 'bigint' && value % 2n === 0n) throw new Error('Not an odd number')
+})
 
-shortEmail.parse("foo@bar.baz") // ok
-shortEmail.parse("foo@") // throws Error
-
-shortEmail.typecheck("foo@bar.baz") // ok
-shortEmail.typecheck("foo@") // TypeScript error
+const $oddNumber = $odd($number())
+const $oddBigInt = $odd($bigint())

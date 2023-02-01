@@ -10,11 +10,11 @@ npm install https://github.com/DeepDoge/master-validator.git -D
 # Usage
 ```ts
 const $person = $object({
-    name: $rangeLength($string, 1, 32),
-    age: $union($null, $gte($number, 0)),
+    name: $lengthRange($string(), 1, 32),
+    age: $union($null(), $gt($number(), 0)),
     sex: $union($literal('man'), $literal('woman')),
     // or you can use `oneOf` instead of `union` and `literal`
-    city: $optional($oneOf(
+    city: $optional($enum(
         'Kraków',
         'Oaxaca',
         'Moscow',
@@ -33,9 +33,9 @@ const $person = $object({
     ))
 })
 
-const $memberRole = $oneOf('admin', 'moderator', 'user')
+const $memberRole = $enum('admin', 'moderator', 'user')
 const $member = $intersection($person, $object({
-    id: $string,
+    id: $length($string(), 32),
     role: $memberRole
 }))
 ```
@@ -44,10 +44,10 @@ Type of $member:
 {
     name: string
     age: number | null
-    sex: 'man' | 'woman'
-    city?: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 
-        'Baghdad' | 'Kuala, Lumpur' | 'Jeddah' | 'Riyadh' | 'Mogadishu' | 
-        'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 'Taizz' | 'Tehran' | null | undefined
+    sex: 'male' | 'female'
+    city?: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 'Baghdad' | 'Kuala, Lumpur' | 
+    'Jeddah' | 'Riyadh' | 'Mogadishu' | 'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 
+    'Taizz' | 'Tehran' | null | undefined
     id: string
     role: 'admin' | 'moderator' | 'user'
 }
@@ -84,41 +84,25 @@ $member.typecheck({ ... }) // doesn't throw error, gives typescript error if typ
 ## Extending with custom validators
 You can create your own validators
 ```ts
-const even = <T extends $Validator<number | bigint>>(validator: T) =>
-    $validator<$infer<T>>((value: unknown) =>
-    {
-        validator(value)
-        if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
-    })
-const evenNumber = even($number)
-const evenBigInt = even($bigint)
-```
+import { $bigint, $number, $validator, Validator } from "../library"
 
-
-```ts
-class MyClass { }
-const myClass = $validator<MyClass>((value: unknown) => 
-{
-    if (!(value instanceof MyClass)) throw new TypeError(`Expected MyClass, got ${value}`)
+class MyClass {}
+const $myClass = $validator((value: unknown): asserts value is MyClass => {
+    if (!(value instanceof MyClass)) throw new Error('Not a MyClass')
 })
-```
 
-```ts
-const email = <T extends $Validator<string>>(validator: T) =>
-    $validator<`${string[0]}${string}@${string[0]}${string}.${string[0]}${string}`>((value: unknown) =>
-    {
-        validator(value)
-        if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) throw new TypeError(`Expected email, got ${value}`)
-    })
+const $oddNumber = $validator((value: unknown): asserts value is number => {
+    if (typeof value !== 'number' || value % 2 === 0) throw new Error('Not an odd number')
+})
 
-// then you can use it like this
-const shortEmail = email($maxLength($string, 50))
+const $odd = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>): asserts value is T => {
+    validator.assert(value)
+    if (typeof value === 'number' && value % 2 === 0) throw new Error('Not an odd number')
+    if (typeof value === 'bigint' && value % 2n === 0n) throw new Error('Not an odd number')
+})
 
-shortEmail.parse("foo@bar.baz") // ok
-shortEmail.parse("foo@") // throws Error
-
-shortEmail.typecheck("foo@bar.baz") // ok
-shortEmail.typecheck("foo@") // TypeScript error
+const $oddNumber = $odd($number())
+const $oddBigInt = $odd($bigint())
 ```
 
 # Inspired by

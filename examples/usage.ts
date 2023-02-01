@@ -1,11 +1,11 @@
-import { $gt, $gte, $intersection, $literal, $null, $number, $object, $oneOf, $optional, $rangeLength, $string, $union } from "../library"
+import { $enum, $gt, $infer, $intersection, $length, $lengthRange, $literal, $null, $number, $object, $optional, $string, $union } from "../library"
 
 const $person = $object({
-    name: $string($rangeLength(1, 32)),
-    age: $union($null, $number($gt(0))),
+    name: $lengthRange($string(), 1, 32),
+    age: $union($null(), $gt($number(), 0)),
     sex: $union($literal('man'), $literal('woman')),
     // or you can use `oneOf` instead of `union` and `literal`
-    city: $optional($oneOf(
+    city: $optional($enum(
         'Kraków',
         'Oaxaca',
         'Moscow',
@@ -24,25 +24,22 @@ const $person = $object({
     ))
 })
 
-const $memberRole = $oneOf('admin', 'moderator', 'user')
+const $memberRole = $enum('admin', 'moderator', 'user')
 const $member = $intersection($person, $object({
-    id: $string,
+    id: $length($string(), 32),
     role: $memberRole
 }))
-
-$string(minLength(1), maxLength(32))
-$union($null, $number($gte(0)))
 
 /* 
     Type of $member:
     {
-        name: string
-        age: number | null
-        sex: 'man' | 'woman'
-        city?: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 
-            'Baghdad' | 'Kuala, Lumpur' | 'Jeddah' | 'Riyadh' | 'Mogadishu' | 
-            'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 'Taizz' | 'Tehran' | null | undefined
-        id: string
-        role: 'admin' | 'moderator' | 'user'
+        name: string;
+        age: number | null;
+        sex: 'male' | 'female';
+        city?: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 'Baghdad' | 'Kuala, Lumpur' | 
+            'Jeddah' | 'Riyadh' | 'Mogadishu' | 'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' | 
+            'Taizz' | 'Tehran' | null | undefined;
+        id: string;
+        role: 'admin' | 'moderator' | 'user';
     }
 */
