@@ -1,6 +1,6 @@
-import { $array, $gte, $infer, $intersection, $literal, $null, $number, $object, $object2, $oneOf, $string, $tuple, $union } from "../library"
+import { $array, $gte, $infer, $intersection, $literal, $null, $number, $object, $oneOf, $string, $tuple, $union } from "../library"
 
-const test = $object2({
+const test = $object({
     0: $oneOf("a", "b", "c"),
     1: $oneOf(1, 2, 3),
     2: $union($literal("a"), $literal("b"), $literal("c"), $literal(1), $literal(2), $literal(3)),
@@ -17,4 +17,6 @@ const test = $object2({
     f: $array($string),
     g: $array($union($null, $string)),
     h: $array($union($null, $gte($number, 0))),
-}, 'required', 'b', 'c', 'd', 'e', 'f', 'g', 'h')
+})
+
+type Test = $infer<typeof test>

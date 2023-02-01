@@ -11,7 +11,7 @@ export interface $Validator<T> extends ValidatorFunction<T>
 {
     is(value: unknown): value is T
     parse(value: unknown): T
-    typecheck<U extends T>(value: U): U
+    typecheck(value: T): T
 }
 
 export type $infer<T> = T extends $Validator<infer U> ? U : never
@@ -36,7 +36,7 @@ export function $validator<T>(validator: ValidatorFunction<T>): $Validator<T>
         validator(value)
         return value as T
     }
-    fn.typecheck = <U extends T>(value: U) => value
+    fn.typecheck = (value: T) => value
     return fn
 }
 
@@ -66,7 +66,7 @@ export const $date = $validator<Date>((value: unknown) =>
 })
 export const $function = $validator<Function>((value: unknown) =>
 {
-    if (typeof value !== 'function') throw new TypeError(`Expected function, got ${typeof value}`)
+    if (!(value instanceof Function)) throw new TypeError(`Expected function, got ${typeof value}`)
 })
 export const $null = $validator<null>((value: unknown) =>
 {
@@ -86,64 +86,6 @@ export const $unknown = $validator<unknown>((value: unknown) =>
 })
 export const $any = $validator<any>((_: unknown) => { })
 
-
-export const $object = <T extends ValidatorObj>(obj: T) =>
-    $validator<{ [k in keyof T]: $infer<T[k]> }>((value: unknown) =>
-    {
-        if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
-        for (const [key, validator] of Object.entries(obj))
-            validator.parse((value as { [K in keyof T]: $infer<T[K]> })[key])
-    })
-export const $partial = <T extends ValidatorObj, K extends (keyof T)[]>(obj: T, ...keys: K) =>
-    $validator<Partial<{ [k in K[number]]: $infer<T[k]> }> & { [k in Exclude<keyof T, K[number]>]: $infer<T[k]> }>((value: unknown) =>
-    {
-        if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
-        for (const [key, validator] of Object.entries(obj))
-        {
-            const v = (value as { [K in keyof T]: $infer<T[K]> })[key]
-            if (v === undefined && (keys.length === 0 || keys.includes(key as any))) continue
-            validator.parse(v)
-        }
-    })
-export const $required = <T extends ValidatorObj, K extends (keyof T)[]>(obj: T, ...keys: K) =>
-    $validator<{ [k in K[number]]: $infer<T[k]> } & Partial<{ [k in Exclude<keyof T, K[number]>]: $infer<T[k]> }>>((value: unknown) =>
-    {
-        if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
-        for (const [key, validator] of Object.entries(obj))
-        {
-            const v = (value as { [K in keyof T]: $infer<T[K]> })[key]
-            if (v === undefined && !keys.includes(key as any)) continue
-            validator.parse(v)
-        }
-    })
-
-export const $object2 = <T extends ValidatorObj, M extends 'partial' | 'required', K extends (keyof T)[]>(obj: T, mode?: M, ...keys: K):
-    M extends 'partial' ? K['length'] extends 0 ? ReturnType<typeof $required<T, K>> : ReturnType<typeof $partial<T, K>> :
-    M extends 'required' ? K['length'] extends 0 ? ReturnType<typeof $object<T>> : ReturnType<typeof $required<T, K>> :
-    ReturnType<typeof $object<T>> =>
-{
-    if (mode === 'partial') return keys.length === 0 ? $required(obj, ...keys) : $partial(obj, ...keys) as any
-    if (mode === 'required') return keys.length === 0 ? $object(obj) : $required(obj, ...keys) as any
-    return $object(obj) as any
-}
-
-export const $array = <T extends $Validator<any>>(validator: T) =>
-    $validator<$infer<T>[]>((value: unknown) =>
-    {
-        if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${typeof value}`)
-        for (const item of value) validator(item)
-    })
-export const $tuple = <T extends $Validator<any>[]>(...validators: T) =>
-    $validator<{ [K in keyof T]: $infer<T[K]> }>((value: unknown) =>
-    {
-        if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${typeof value}`)
-        if (value.length !== validators.length) throw new TypeError(`Expected array of length ${validators.length}, got ${value.length}`)
-        for (let i = 0; i < validators.length; i++)
-        {
-            const validator = validators[i]
-            validator?.(value[i])
-        }
-    })
 
 export const $literal = <T extends Any>(value: T) =>
     $validator<T>((v: unknown) =>
@@ -195,6 +137,39 @@ export const $not = <T extends $Validator<any>>(validator: T) =>
         }
         throw new TypeError(`Expected not ${validator.name}, got ${value}`)
     })
+
+
+type RequiredKeys<T extends ValidatorObj> = { [k in keyof T]: undefined extends $infer<T[k]> ? never : k }[keyof T]
+type PartialKeys<T extends ValidatorObj> = { [k in keyof T]: undefined extends $infer<T[k]> ? k : never }[keyof T]
+type ApplyPartial<T extends ValidatorObj> = { [k in RequiredKeys<T>]: $infer<T[k]> } & { [k in PartialKeys<T>]?: $infer<T[k]> }
+
+export const $object = <T extends ValidatorObj>(obj: T) =>
+    $validator<ApplyPartial<T>>((value: unknown) =>
+    {
+        if (typeof value !== 'object' || value === null) throw new TypeError(`Expected object, got ${typeof value}`)
+        for (const [key, validator] of Object.entries(obj))
+            validator.parse((value as { [K in keyof T]: $infer<T[K]> })[key])
+    })
+export const $optional = <T extends Any>(validator: $Validator<T>) => $union($null, $undefined, validator)
+
+export const $array = <T extends $Validator<any>>(validator: T) =>
+    $validator<$infer<T>[]>((value: unknown) =>
+    {
+        if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${typeof value}`)
+        for (const item of value) validator(item)
+    })
+export const $tuple = <T extends $Validator<any>[]>(...validators: T) =>
+    $validator<{ [K in keyof T]: $infer<T[K]> }>((value: unknown) =>
+    {
+        if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${typeof value}`)
+        if (value.length !== validators.length) throw new TypeError(`Expected array of length ${validators.length}, got ${value.length}`)
+        for (let i = 0; i < validators.length; i++)
+        {
+            const validator = validators[i]
+            validator?.(value[i])
+        }
+    })
+
 
 export const $gt = <T extends $Validator<number | bigint>>(validator: T, min: number | bigint) =>
     $validator<$infer<T>>((value: unknown) =>
