@@ -91,7 +91,9 @@ const even = <T extends $Validator<number | bigint>>(validator: T) =>
         if (value % 2 !== 0) throw new TypeError(`Expected even number, got ${value}`)
     })
 const evenNumber = even($number)
+const evenBigInt = even($bigint)
 ```
+
 
 ```ts
 class MyClass { }
