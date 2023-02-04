@@ -68,7 +68,7 @@ else
 }
 ```
 
-Or you can use parse function to throw error if value is invalid
+Or you can use parse function to throw error if value is invalid<br/>
 If value is valid typescript will infer type of value
 ```ts
 const value = $member.parse(unknownValue) // throws error if value is invalid
@@ -91,18 +91,19 @@ const $myClass = $validator((value: unknown): asserts value is MyClass => {
     if (!(value instanceof MyClass)) throw new Error('Not a MyClass')
 })
 
-const $oddNumber = $validator((value: unknown): asserts value is number => {
-    if (typeof value !== 'number' || value % 2 === 0) throw new Error('Not an odd number')
+const $positiveNumber = $validator((value: unknown): asserts value is number => {
+    if (typeof value !== 'number') throw new Error('Not a number')
+    if (value <= 0) throw new Error('Not a positive number')
 })
 
-const $odd = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>): asserts value is T => {
+// Or you can inhrerit from another validator
+const $positive = $validator(<T extends bigint | number>(value: unknown, validator: Validator<T>): asserts value is T => {
     validator.assert(value)
-    if (typeof value === 'number' && value % 2 === 0) throw new Error('Not an odd number')
-    if (typeof value === 'bigint' && value % 2n === 0n) throw new Error('Not an odd number')
-})
+    if (value <= 0) throw new Error('Not a positive number')
+}) 
 
-const $oddNumber = $odd($number())
-const $oddBigInt = $odd($bigint())
+const $positiveBigInt = $positive($bigint())
+const $positiveNumber = $positive($number())
 ```
 
 # Inspired by
