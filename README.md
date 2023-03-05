@@ -13,37 +13,37 @@ npm install https://github.com/DeepDoge/master-validator.git -D
 
 ```ts
 const $person = $object({
-	name: $string($lengthRange(1, 32)),
-	age: $union($null(), $number($gt(18))),
-	sex: $union($literal("man"), $literal("woman")),
-	city: $optional(
-		$enum(
-			"Kraków",
-			"Oaxaca",
-			"Moscow",
-			"Kabul",
-			"Baghdad",
-			"Kuala, Lumpur",
-			"Jeddah",
-			"Riyadh",
-			"Mogadishu",
-			"Dubai",
-			"Abu Dhabi",
-			"Sanaa",
-			"Ibadan",
-			"Taizz",
-			"Tehran"
-		)
-	),
+    name: $string($lengthRange(1, 32)),
+    age: $union($null(), $number($gt(18))),
+    sex: $union($literal("man"), $literal("woman")),
+    city: $optional(
+        $enum(
+            "Kraków",
+            "Oaxaca",
+            "Moscow",
+            "Kabul",
+            "Baghdad",
+            "Kuala, Lumpur",
+            "Jeddah",
+            "Riyadh",
+            "Mogadishu",
+            "Dubai",
+            "Abu Dhabi",
+            "Sanaa",
+            "Ibadan",
+            "Taizz",
+            "Tehran"
+        )
+    ),
 })
 
 const $memberRole = $enum("admin", "moderator", "user")
 const $member = $intersection(
-	$person,
-	$object({
-		id: $string($length(32)),
-		role: $memberRole,
-	})
+    $person,
+    $object({
+        id: $string($length(32)),
+        role: $memberRole,
+    })
 )
 ```
 
@@ -67,11 +67,11 @@ if its valid typescript will infer type of value
 
 ```ts
 if ($member.is(unknownValue)) {
-	// So you can use it like this with the correct type
-	unknownValue.name // string
+    // So you can use it like this with the correct type
+    unknownValue.name // string
 } else {
-	unknownValue // unknown
-	unknownValue.name // Error
+    unknownValue // unknown
+    unknownValue.name // Error
 }
 ```
 
@@ -91,12 +91,12 @@ You can create your own types or validators
 ```ts
 class MyClass {}
 const $myClass = $type<MyClass>((value: unknown) => {
-	if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
+    if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
 })
 
 // $postive validator can only be used with bigint and number types
 const $positive = $validator(<T extends bigint | number>(value: T) => {
-	if (value < 0) throw new Error("Not a positive number")
+    if (value < 0) throw new Error("Not a positive number")
 })
 
 const $positiveBigInt = $bigint($positive())
