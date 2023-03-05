@@ -8,7 +8,7 @@ export type TypeCreator<T> = {
 	(...validators: Validator<T>[]): Type<T>
 }
 export type Type<T> = {
-	validateOrThrow(value: unknown): void
+	parseOrThrow(value: unknown): T
 	assert(value: unknown): asserts value is T
 	is(value: unknown): value is T
 }
@@ -27,8 +27,9 @@ export function $type<T>(validator: Validator<T>["validate"]) {
 		const allValidators = [{ validate: validator }].concat(validators)
 		const validateAll = (value: T) => allValidators.forEach((validator) => validator.validate(value))
 		const type: Type<T> = {
-			validateOrThrow(value: T) {
+			parseOrThrow(value: T) {
 				validateAll(value)
+				return value
 			},
 			assert(value: T) {
 				validateAll(value)
@@ -95,7 +96,7 @@ export const $union = <T extends Type<any>[]>(...types: T) =>
 		const errors: TypeError[] = []
 		for (const type of types) {
 			try {
-				type.validateOrThrow(value)
+				type.parseOrThrow(value)
 				return
 			} catch (error) {
 				if (error instanceof TypeError) errors.push(error)
@@ -137,7 +138,7 @@ export const $object = <T extends Record<string, Type<any>>>(shape: T) =>
 			if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
 			for (const [key, type] of Object.entries(shape)) {
 				try {
-					type.validateOrThrow(value[key as keyof typeof value])
+					type.parseOrThrow(value[key as keyof typeof value])
 				} catch (error) {
 					if (error instanceof TypeError) throw new TypeError(`${key}: ${error.message}`)
 					throw error
@@ -153,7 +154,7 @@ export const $tuple = <T extends Type<any>[]>(...types: T) =>
 			throw new TypeError(`Expected tuple of length ${types.length}, got ${got(value)} with length ${value.length}`)
 		for (let i = 0; i < types.length; i++) {
 			try {
-				types[i]!.validateOrThrow(value[i])
+				types[i]!.parseOrThrow(value[i])
 			} catch (error) {
 				if (error instanceof TypeError) throw new TypeError(`[${i}]: ${error.message}`)
 				throw error
