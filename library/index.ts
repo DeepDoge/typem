@@ -1,41 +1,46 @@
-type Shape = { [key: string]: Validator<any> }
+type Shape = { [key: string]: Validator<any, any> }
 type Obj = Record<string, any>
 type Any = string | number | boolean | null | undefined | object | symbol | bigint
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
 function is<T>(_: unknown): asserts _ is T {}
 
-/* interface ValidatorPipe<T>
-{
-    <U extends T>(validator: (t: Validator<T>) => Validator<U>): Validator<U>
-} */
-
-export interface Validator<T> {
-	/* extends ValidatorPipe<T> */ assert(value: unknown): asserts value is T
+export type Validator<T, P extends Obj | undefined> = {
+	params: Readonly<P>
+	assert(value: unknown): asserts value is T
 	is(value: unknown): value is T
 	parse(value: unknown): T
 	type(value: T): T
 }
 
-export type $infer<T> = T extends Validator<infer U> ? U : never
+export type $infer<T> = T extends Validator<infer U, any> ? U : never
 
-export function $validator<T, P extends any[]>(parser: (value: unknown, ...params: P) => asserts value is T) {
-	return (...params: P): Validator<T> => {
-		const fn: Validator<T> = {} as any /* <U>(validator: (t: Validator<T>) => Validator<U>) => validator(fn) */
-		fn.assert = (value: unknown) => parser(value, ...params)
-		fn.parse = (value: unknown) => {
-			if (fn.is(value)) return value
-			throw new TypeError(`Expected ${fn}, got ${value}`)
+export const $validator: {
+	<T>(parser: (value: unknown) => asserts value is T): () => Validator<T, undefined>
+	<T, P extends Obj>(parser: (value: unknown, params: P) => asserts value is T): (params: P) => Validator<T, P>
+} = <T, P extends Obj | undefined>(parser: (value: unknown, params?: P) => asserts value is T) => {
+	return (params?: P): Validator<T, P> => {
+		Object.freeze(params)
+		return {
+			params: params!,
+			assert(value: unknown) {
+				return parser(value, params)
+			},
+			parse(value: unknown): T {
+				parser(value, params)
+				return value
+			},
+			is(value: unknown): value is T {
+				try {
+					this.parse(value)
+					return true
+				} catch {
+					return false
+				}
+			},
+			type(value: T): T {
+				return value
+			},
 		}
-		fn.is = (value: unknown): value is T => {
-			try {
-				parser(value, ...params)
-				return true
-			} catch {
-				return false
-			}
-		}
-		fn.type = (value: T): T => value
-		return fn
 	}
 }
 
@@ -79,10 +84,10 @@ export const $literal = $validator(<T extends Any>(v: unknown, value: T): assert
 	if (v !== value) throw new TypeError(`Expected ${value?.toString()}, got ${v}`)
 })
 
-export const $union = $validator(<T extends Validator<any>[]>(value: unknown, ...validators: T): asserts value is $infer<T[number]> => {
+export const $union = $validator(<T extends Validator<any, any>[]>(value: unknown, validators: T): asserts value is $infer<T[number]> => {
 	for (const validator of validators) {
 		try {
-			validator.assert(value)
+			validator.parse(value)
 			return
 		} catch (error) {
 			continue
@@ -92,13 +97,13 @@ export const $union = $validator(<T extends Validator<any>[]>(value: unknown, ..
 })
 
 export const $intersection = $validator(
-	<T extends Validator<object>[]>(value: unknown, ...validators: T): asserts value is UnionToIntersection<$infer<T[number]>> => {
+	<T extends Validator<object, any>[]>(value: unknown, ...validators: T): asserts value is UnionToIntersection<$infer<T[number]>> => {
 		for (const validator of validators) validator.assert(value)
 	}
 )
 
 export const $exclude = $validator(
-	<T extends Validator<any>, U extends T[]>(
+	<T extends Validator<any, any>, U extends T[]>(
 		value: unknown,
 		validator: T,
 		...excluded: U
@@ -118,9 +123,9 @@ export const $object = $validator(
 		value: unknown,
 		obj: T
 	): asserts value is {
-		[K in { [K in keyof T]: Validator<undefined> extends T[K] ? K : never }[keyof T]]?: $infer<T[K]>
+		[K in { [K in keyof T]: Validator<undefined, any> extends T[K] ? K : never }[keyof T]]?: $infer<T[K]>
 	} & {
-		[K in { [K in keyof T]: Validator<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
+		[K in { [K in keyof T]: Validator<undefined, any> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
 	} => {
 		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${value}`)
 		is<Obj>(value)
@@ -128,15 +133,15 @@ export const $object = $validator(
 	}
 )
 
-export const $optional = <T extends Validator<any>>(validator: T) => $union(validator, $undefined(), $null())
+export const $optional = <T extends Validator<any, any>>(validator: T) => $union([validator, $null(), $undefined()])
 
-export const $array = $validator(<T extends Validator<any>>(value: unknown, validator: T): asserts value is $infer<T>[] => {
+export const $array = $validator(<T extends Validator<any, any>>(value: unknown, validator: T): asserts value is $infer<T>[] => {
 	if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${value}`)
 	for (const v of value) validator.assert(v)
 })
 
 export const $tuple = $validator(
-	<T extends Validator<any>[]>(value: unknown, ...validators: T): asserts value is { [k in keyof T]: $infer<T[k]> } => {
+	<T extends Validator<any, any>[]>(value: unknown, ...validators: T): asserts value is { [k in keyof T]: $infer<T[k]> } => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${value}`)
 		if (value.length !== validators.length) throw new TypeError(`Expected tuple of length ${validators.length}, got ${value}`)
 		for (let i = 0; i < validators.length; i++) validators[i]!.parse(value[i])
@@ -144,34 +149,38 @@ export const $tuple = $validator(
 )
 
 export const $record = $validator(
-	<K extends Validator<any>, V extends Validator<any>>(
+	<K extends Validator<any, any>, V extends Validator<any, any>>(
 		value: unknown,
-		keyValidator: K,
-		valueValidator: V
+		params: {
+			keyValidator: K
+			valueValidator: V
+		}
 	): asserts value is Record<$infer<K>, $infer<V>> => {
 		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${value}`)
 		for (const [key, val] of Object.entries(value)) {
-			keyValidator.assert(key)
-			valueValidator.assert(val)
+			params.keyValidator.assert(key)
+			params.valueValidator.assert(val)
 		}
 	}
 )
 
 export const $map = $validator(
-	<K extends Validator<any>, V extends Validator<any>>(
+	<K extends Validator<any, any>, V extends Validator<any, any>>(
 		value: unknown,
-		keyValidator: K,
-		valueValidator: V
+		params: {
+			keyValidator: K
+			valueValidator: V
+		}
 	): asserts value is Map<$infer<K>, $infer<V>> => {
 		if (!(value instanceof Map)) throw new TypeError(`Expected Map, got ${value}`)
 		for (const [key, val] of value) {
-			keyValidator.assert(key)
-			valueValidator.assert(val)
+			params.keyValidator.assert(key)
+			params.valueValidator.assert(val)
 		}
 	}
 )
 
-export const $set = $validator(<T extends Validator<any>>(value: unknown, validator: T): asserts value is Set<$infer<T>> => {
+export const $set = $validator(<T extends Validator<any, any>>(value: unknown, validator: T): asserts value is Set<$infer<T>> => {
 	if (!(value instanceof Set)) throw new TypeError(`Expected Set, got ${value}`)
 	for (const v of value) validator.assert(v)
 })
@@ -180,97 +189,126 @@ export const $instanceOf = $validator(<T extends new (...args: any[]) => any>(va
 	if (!(value instanceof constructor)) throw new TypeError(`Expected instance of ${constructor.name}, got ${value}`)
 })
 
-export const $enum = $validator(<T extends (string | number)[]>(value: unknown, ...values: T): asserts value is T[number] => {
+export const $enum = $validator(<T extends (string | number)[]>(value: unknown, values: T): asserts value is T[number] => {
 	if (!values.includes(value as any)) throw new TypeError(`Expected ${value} to be one of ${values}`)
 })
 
-export const $gt = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>, gt: T): asserts value is T => {
-	validator.assert(value)
-	if (value <= gt) throw new TypeError(`Expected ${value} to be greater than ${gt}`)
-})
+export const $gt = $validator(
+	<T extends Validator<number | bigint, any>>(value: unknown, params: { validator: T; gt: $infer<T> }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value <= params.gt) throw new TypeError(`Expected ${value} to be greater than ${params.gt}`)
+	}
+)
 
-export const $gte = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>, gte: T): asserts value is T => {
-	validator.assert(value)
-	if (value < gte) throw new TypeError(`Expected ${value} to be greater than or equal to ${gte}`)
-})
+export const $gte = $validator(
+	<T extends Validator<number | bigint, any>>(value: unknown, params: { validator: T; gte: $infer<T> }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value < params.gte) throw new TypeError(`Expected ${value} to be greater than or equal to ${params.gte}`)
+	}
+)
 
-export const $lt = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>, lt: T): asserts value is T => {
-	validator.assert(value)
-	if (value >= lt) throw new TypeError(`Expected ${value} to be less than ${lt}`)
-})
+export const $lt = $validator(
+	<T extends Validator<number | bigint, any>>(value: unknown, params: { validator: T; lt: $infer<T> }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value >= params.lt) throw new TypeError(`Expected ${value} to be less than ${params.lt}`)
+	}
+)
 
-export const $lte = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>, lte: T): asserts value is T => {
-	validator.assert(value)
-	if (value > lte) throw new TypeError(`Expected ${value} to be less than or equal to ${lte}`)
-})
+export const $lte = $validator(
+	<T extends Validator<number | bigint, any>>(value: unknown, params: { validator: T; lte: $infer<T> }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value > params.lte) throw new TypeError(`Expected ${value} to be less than or equal to ${params.lte}`)
+	}
+)
 
-export const $range = $validator(<T extends number | bigint>(value: unknown, validator: Validator<T>, min: T, max: T): asserts value is T => {
-	validator.assert(value)
-	if (value < min || value > max) throw new TypeError(`Expected ${value} to be between ${min} and ${max}`)
-})
+export const $range = $validator(
+	<T extends Validator<number | bigint, any>>(
+		value: unknown,
+		params: { validator: T; min: $infer<T>; max: $infer<T> }
+	): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value < params.min || value > params.max) throw new TypeError(`Expected ${value} to be between ${params.min} and ${params.max}`)
+	}
+)
 
-export const $finite = $validator((value: unknown, validator: Validator<number>): asserts value is number => {
+export const $finite = $validator(<T extends Validator<number, any>>(value: unknown, validator: T): asserts value is number => {
 	validator.assert(value)
 	if (!Number.isFinite(value)) throw new TypeError(`Expected ${value} to be finite`)
 })
 
-export const $length = $validator(<T extends string | Array<any>>(value: unknown, validator: Validator<T>, length: number): asserts value is T => {
-	validator.assert(value)
-	if (value.length !== length) throw new TypeError(`Expected ${value} to have length ${length}`)
-})
+export const $length = $validator(
+	<T extends Validator<string | Array<any>, any>>(value: unknown, params: { validator: T; length: number }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value.length !== params.length) throw new TypeError(`Expected ${value} to have length ${params.length}`)
+	}
+)
 
 export const $minLength = $validator(
-	<T extends string | Array<any>>(value: unknown, validator: Validator<T>, minLength: number): asserts value is T => {
-		validator.assert(value)
-		if (value.length < minLength) throw new TypeError(`Expected ${value} to have length at least ${minLength}`)
+	<T extends Validator<string | Array<any>, any>>(value: unknown, params: { validator: T; minLength: number }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value.length < params.minLength) throw new TypeError(`Expected ${value} to have length at least ${params.minLength}`)
 	}
 )
 
 export const $maxLength = $validator(
-	<T extends string | Array<any>>(value: unknown, validator: Validator<T>, maxLength: number): asserts value is T => {
-		validator.assert(value)
-		if (value.length > maxLength) throw new TypeError(`Expected ${value} to have length at most ${maxLength}`)
+	<T extends Validator<string | Array<any>, any>>(value: unknown, params: { validator: T; maxLength: number }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value.length > params.maxLength) throw new TypeError(`Expected ${value} to have length at most ${params.maxLength}`)
 	}
 )
 
 export const $lengthRange = $validator(
-	<T extends string | Array<any>>(value: unknown, validator: Validator<T>, minLength: number, maxLength: number): asserts value is T => {
-		validator.assert(value)
-		if (value.length < minLength || value.length > maxLength)
-			throw new TypeError(`Expected ${value} to have length between ${minLength} and ${maxLength}`)
+	<T extends Validator<string | Array<any>, any>>(
+		value: unknown,
+		params: { validator: T; minLength: number; maxLength: number }
+	): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (value.length < params.minLength || value.length > params.maxLength)
+			throw new TypeError(`Expected ${value} to have length between ${params.minLength} and ${params.maxLength}`)
 	}
 )
 
-export const $regex = $validator(<T extends string>(value: unknown, validator: Validator<T>, regex: RegExp): asserts value is T => {
-	validator.assert(value)
-	if (!regex.test(value)) throw new TypeError(`Expected ${value} to match ${regex}`)
-})
+export const $regex = $validator(
+	<T extends Validator<string, any>>(value: unknown, params: { validator: T; regex: RegExp }): asserts value is $infer<T> => {
+		params.validator.assert(value)
+		if (!params.regex.test(value)) throw new TypeError(`Expected ${value} to match ${params.regex}`)
+	}
+)
 
 export const $startsWith = $validator(
-	<T extends string, P extends string>(value: unknown, validator: Validator<T>, prefix: P): asserts value is `${P}${T}` => {
-		validator.assert(value)
-		if (!value.startsWith(prefix)) throw new TypeError(`Expected ${value} to start with ${prefix}`)
+	<T extends Validator<string, any>, P extends string>(
+		value: unknown,
+		params: { validator: T; prefix: P }
+	): asserts value is `${P}${$infer<T>}` => {
+		params.validator.assert(value)
+		if (!value.startsWith(params.prefix)) throw new TypeError(`Expected ${value} to start with ${params.prefix}`)
 	}
 )
 
 export const $endsWith = $validator(
-	<T extends string, S extends string>(value: unknown, validator: Validator<T>, suffix: S): asserts value is `${T}${S}` => {
-		validator.assert(value)
-		if (!value.endsWith(suffix)) throw new TypeError(`Expected ${value} to end with ${suffix}`)
+	<T extends Validator<string, any>, S extends string>(
+		value: unknown,
+		params: { validator: T; suffix: S }
+	): asserts value is `${$infer<T>}${S}` => {
+		params.validator.assert(value)
+		if (!value.endsWith(params.suffix)) throw new TypeError(`Expected ${value} to end with ${params.suffix}`)
 	}
 )
 
 export const $contains = $validator(
-	<T extends string, S extends string>(value: unknown, validator: Validator<T>, substring: S): asserts value is `${T}${S}${T}` => {
-		validator.assert(value)
-		if (!value.includes(substring)) throw new TypeError(`Expected ${value} to contain ${substring}`)
+	<T extends Validator<string, any>, S extends string>(
+		value: unknown,
+		params: { validator: T; substring: S }
+	): asserts value is `${$infer<T>}${S}${$infer<T>}` => {
+		params.validator.assert(value)
+		if (!value.includes(params.substring)) throw new TypeError(`Expected ${value} to contain ${params.substring}`)
 	}
 )
 
 export const $email = $validator(
-	<T extends string>(
+	<T extends Validator<string, any>>(
 		value: unknown,
-		validator: Validator<T>
+		validator: T
 	): asserts value is `${string[0]}${string}@${string[0]}${string}.${string[0]}${string}` => {
 		validator.assert(value)
 		if (
@@ -283,9 +321,9 @@ export const $email = $validator(
 )
 
 export const $url = $validator(
-	<T extends string>(
+	<T extends Validator<string, any>>(
 		value: unknown,
-		validator: Validator<T>
+		validator: T
 	): asserts value is `${"https" | "http"}://${string[0]}${string}.${string[0]}${string}` => {
 		validator.assert(value)
 		if (!/^(https?:\/\/)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+/.test(value)) throw new TypeError(`Expected ${value} to be a valid URL`)
@@ -293,24 +331,31 @@ export const $url = $validator(
 )
 
 export const $uri = $validator(
-	<T extends string>(value: unknown, validator: Validator<T>): asserts value is `${string[0]}${string}://${string[0]}${string}` => {
+	<T extends Validator<string, any>>(value: unknown, validator: T): asserts value is `${string[0]}${string}://${string[0]}${string}` => {
 		validator.assert(value)
 		if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) throw new TypeError(`Expected ${value} to be a valid URI`)
 	}
 )
 
-export const $dateISO = $validator(<T extends string>(value: unknown, validator: Validator<T>): asserts value is `${number}-${number}-${number}` => {
-	validator.assert(value)
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new TypeError(`Expected ${value} to be a valid ISO date`)
-})
+export const $dateISO = $validator(
+	<T extends Validator<string, any>>(value: unknown, validator: T): asserts value is `${number}-${number}-${number}` => {
+		validator.assert(value)
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new TypeError(`Expected ${value} to be a valid ISO date`)
+	}
+)
 
-export const $timeISO = $validator(<T extends string>(value: unknown, validator: Validator<T>): asserts value is `${number}:${number}:${number}` => {
-	validator.assert(value)
-	if (!/^\d{2}:\d{2}:\d{2}$/.test(value)) throw new TypeError(`Expected ${value} to be a valid ISO time`)
-})
+export const $timeISO = $validator(
+	<T extends Validator<string, any>>(value: unknown, validator: T): asserts value is `${number}:${number}:${number}` => {
+		validator.assert(value)
+		if (!/^\d{2}:\d{2}:\d{2}$/.test(value)) throw new TypeError(`Expected ${value} to be a valid ISO time`)
+	}
+)
 
 export const $dateTimeISO = $validator(
-	<T extends string>(value: unknown, validator: Validator<T>): asserts value is `${number}-${number}-${number}T${number}:${number}:${number}` => {
+	<T extends Validator<string, any>>(
+		value: unknown,
+		validator: T
+	): asserts value is `${number}-${number}-${number}T${number}:${number}:${number}` => {
 		validator.assert(value)
 		if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) throw new TypeError(`Expected ${value} to be a valid ISO date-time`)
 	}
