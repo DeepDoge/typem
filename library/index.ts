@@ -58,41 +58,41 @@ export function $shape<T, S extends Type<any>[] | Record<string, Type<any>>>(sha
 }
 
 // PRIMATIVE TYPES
-export const $string = $type((value: string) => {
+export const $string = $type<string>((value: unknown) => {
 	if (typeof value !== "string") throw new TypeError(`Expected string, got ${got(value)}`)
 })
-export const $number = $type((value: number) => {
+export const $number = $type<number>((value: unknown) => {
 	if (typeof value !== "number") throw new TypeError(`Expected number, got ${got(value)}`)
 })
-export const $int = $type((value: number) => {
+export const $int = $type<number>((value: unknown) => {
 	if (!Number.isInteger(value)) throw new TypeError(`Expected integer, got ${got(value)}`)
 })
-export const $bigint = $type((value: bigint) => {
+export const $bigint = $type<bigint>((value: unknown) => {
 	if (typeof value !== "bigint") throw new TypeError(`Expected bigint, got ${got(value)}`)
 })
-export const $boolean = $type((value: boolean) => {
+export const $boolean = $type<boolean>((value: unknown) => {
 	if (typeof value !== "boolean") throw new TypeError(`Expected boolean, got ${got(value)}`)
 })
-export const $symbol = $type((value: symbol) => {
+export const $symbol = $type<symbol>((value: unknown) => {
 	if (typeof value !== "symbol") throw new TypeError(`Expected symbol, got ${got(value)}`)
 })
-export const $function = $type((value: Function) => {
+export const $function = $type<Function>((value: unknown) => {
 	if (!(value instanceof Function)) throw new TypeError(`Expected function, got ${got(value)}`)
 })
-export const $date = $type((value: Date) => {
+export const $date = $type<Date>((value: unknown) => {
 	if (!(value instanceof Date)) throw new TypeError(`Expected Date, got ${got(value)}`)
 })
-export const $null = $type((value: null) => {
+export const $null = $type<null>((value: unknown) => {
 	if (value !== null) throw new TypeError(`Expected null, got ${got(value)}`)
 })
-export const $undefined = $type((value: undefined) => {
+export const $undefined = $type<undefined>((value: unknown) => {
 	if (value !== undefined) throw new TypeError(`Expected undefined, got ${got(value)}`)
 })
 export const $unknown = $type((_: unknown): asserts _ is unknown => {})
 
 // UNION/EXCLUDE, INTERSECTION TYPES
 export const $union = <T extends Type<any>[]>(...types: T) =>
-	$type((value: $infer<T[number]>) => {
+	$type<$infer<T[number]>>((value: unknown) => {
 		const errors: TypeError[] = []
 		for (const type of types) {
 			try {
@@ -108,13 +108,13 @@ export const $union = <T extends Type<any>[]>(...types: T) =>
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
 
 export const $intersection = <T extends Type<object>[]>(...types: T) =>
-	$type((value: UnionToIntersection<$infer<T[number]>>) => {
+	$type<UnionToIntersection<$infer<T[number]>>>((value: unknown) => {
 		for (const type of types) type.assert(value)
 	})()
 
 // TODO: Union and Intersection information will be on the Type object itself, so this will just remove the unions from there instead
 export const $exclude = <T extends Type<any>, E extends T[]>(type: T, ...excluded: E) =>
-	$type((value: Exclude<$infer<T>, $infer<E[number]>>) => {
+	$type<Exclude<$infer<T>, $infer<E[number]>>>((value: unknown) => {
 		try {
 			type.assert(value)
 			for (const ex of excluded) ex.assert(value)
@@ -164,7 +164,7 @@ export const $tuple = <T extends Type<any>[]>(...types: T) =>
 
 // IDK
 export const $array = <T extends Type<any>>(type: T) =>
-	$type((value: $infer<T>[]) => {
+	$type<$infer<T>[]>((value: unknown) => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${got(value)}`)
 		for (let i = 0; i < value.length; i++) {
 			try {
@@ -177,7 +177,7 @@ export const $array = <T extends Type<any>>(type: T) =>
 	})()
 
 export const $record = <K extends Type<any>, V extends Type<any>>(keyType: K, valueType: V) =>
-	$type((value: Record<$infer<K>, $infer<V>>) => {
+	$type<Record<$infer<K>, $infer<V>>>((value: unknown) => {
 		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
 		for (const [key, val] of Object.entries(value)) {
 			keyType.assert(key)
@@ -186,7 +186,7 @@ export const $record = <K extends Type<any>, V extends Type<any>>(keyType: K, va
 	})()
 
 export const $map = <K extends Type<any>, V extends Type<any>>(keyType: K, valueType: V) =>
-	$type((value: Map<$infer<K>, $infer<V>>) => {
+	$type<Map<$infer<K>, $infer<V>>>((value: unknown) => {
 		if (!(value instanceof Map)) throw new TypeError(`Expected Map, got ${got(value)}`)
 		for (const [key, val] of value) {
 			keyType.assert(key)
@@ -195,23 +195,23 @@ export const $map = <K extends Type<any>, V extends Type<any>>(keyType: K, value
 	})()
 
 export const $set = <T extends Type<any>>(type: T) =>
-	$type((value: Set<$infer<T>>) => {
+	$type<Set<$infer<T>>>((value: unknown) => {
 		if (!(value instanceof Set)) throw new TypeError(`Expected Set, got ${got(value)}`)
 		for (const v of value) type.assert(v)
 	})()
 
 export const $instanceOf = <T extends new (...args: any[]) => any>(constructor: T) =>
-	$type((value: InstanceType<T>) => {
-		if (!((value as unknown) instanceof constructor)) throw new TypeError(`Expected instance of ${constructor.name}, got ${got(value)}`)
+	$type<InstanceType<T>>((value: unknown) => {
+		if (!(value instanceof constructor)) throw new TypeError(`Expected instance of ${constructor.name}, got ${got(value)}`)
 	})()
 
 export const $enum = <T extends readonly (string | number)[]>(...values: T) =>
-	$type((value: T[number]) => {
-		if (!values.includes(value as any)) throw new TypeError(`Expected one of [${values.join(", ")}], got ${got(value)}`)
+	$type<T[number]>((value: unknown) => {
+		if (!values.includes(value as never)) throw new TypeError(`Expected one of [${values.join(", ")}], got ${got(value)}`)
 	})()
 
 export const $literal = <T extends string | number | boolean | null | undefined | object | symbol | bigint>(literal: T) =>
-	$type((value: T) => {
+	$type<T>((value: unknown) => {
 		if (value !== literal) throw new TypeError(`Expected literal ${literal?.toString()}, got ${got(value)}`)
 	})()
 
