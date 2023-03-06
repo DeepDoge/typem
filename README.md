@@ -108,7 +108,7 @@ const $positiveBigInt = $bigint($positive())
 const $positiveNumber = $number($positive())
 ```
 
-If you have a complex type, you can use `$customType` instead of `$type`<br/>
+If you have a complex type, you can use `$complexType` instead of `$type`<br/>
 Complex types are also used internally to create `$map`, `$union`, `$exclude` and etc.
 
 ```ts
@@ -116,7 +116,7 @@ type Complex = { a: number; b: bigint }
 type TypeComplex<T extends Complex> = Type<T[keyof T]> & {
     complex: T
 }
-const $complex = $customType(<T extends Complex>(self: TypeComplex<T>, complex: T) => {
+const $complex = $complexType(<T extends Complex>(self: TypeComplex<T>, complex: T) => {
     self.complex = complex
     return (value: unknown) => {
         if (
