@@ -155,7 +155,7 @@ export const $union = $complexType(<T extends Type<any>[]>(self: TypeUnion<$infe
 	}
 })
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
-export const $exclude = <T extends TypeUnion<any>, E>(union: T, ...excluded: TypeCreator<E>[]) => {
+/* export const $exclude = <T extends TypeUnion<any>, E>(union: T, ...excluded: TypeCreator<E>[]) => {
 	const excludedSet = new Set(excluded)
 
 	const creator2typesMap = unionsMap.get(union)
@@ -165,7 +165,7 @@ export const $exclude = <T extends TypeUnion<any>, E>(union: T, ...excluded: Typ
 		if (!excludedSet.has(creator)) unions.push(...creator2typesMap.get(creator)!)
 	}
 	return $union(...unions) as TypeUnion<Exclude<$infer<T>, $infer<Type<E>>>>
-}
+} */
 export const $intersection = $complexType(<T extends TypeShape<object, any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
 	const creatorSet = new Set(types.map((type) => type.creator))
 	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
