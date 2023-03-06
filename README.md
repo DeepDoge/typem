@@ -13,37 +13,37 @@ npm install https://github.com/DeepDoge/master-validator.git -D
 
 ```ts
 const $person = $object({
-	name: $string($lengthRange(1, 32)),
-	age: $union($null(), $number($gt(18))),
-	sex: $union($literal("man"), $literal("woman")),
-	city: $optional(
-		$enum(
-			"Kraków",
-			"Oaxaca",
-			"Moscow",
-			"Kabul",
-			"Baghdad",
-			"Kuala, Lumpur",
-			"Jeddah",
-			"Riyadh",
-			"Mogadishu",
-			"Dubai",
-			"Abu Dhabi",
-			"Sanaa",
-			"Ibadan",
-			"Taizz",
-			"Tehran"
-		)
-	),
+    name: $string($lengthRange(1, 32)),
+    age: $union($null(), $number($gt(18))),
+    sex: $union($literal("man"), $literal("woman")),
+    city: $optional(
+        $enum(
+            "Kraków",
+            "Oaxaca",
+            "Moscow",
+            "Kabul",
+            "Baghdad",
+            "Kuala, Lumpur",
+            "Jeddah",
+            "Riyadh",
+            "Mogadishu",
+            "Dubai",
+            "Abu Dhabi",
+            "Sanaa",
+            "Ibadan",
+            "Taizz",
+            "Tehran"
+        )
+    ),
 })
 
 const $memberRole = $enum("admin", "moderator", "user")
 const $member = $intersection(
-	$person,
-	$object({
-		id: $string($length(32)),
-		role: $memberRole,
-	})
+    $person,
+    $object({
+        id: $string($length(32)),
+        role: $memberRole,
+    })
 )
 ```
 
@@ -67,11 +67,11 @@ if its valid typescript will infer type of value
 
 ```ts
 if ($member.validate(unknownValue)) {
-	// So you can use it like this with the correct type
-	unknownValue.name // string
+    // So you can use it like this with the correct type
+    unknownValue.name // string
 } else {
-	unknownValue // unknown
-	unknownValue.name // Error
+    unknownValue // unknown
+    unknownValue.name // Error
 }
 ```
 
@@ -91,12 +91,12 @@ You can create your own Types or Validators
 ```ts
 class MyClass {}
 const $myClass = $type<MyClass>((value: unknown) => {
-	if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
+    if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
 })
 
 // $postive validator can only be used with bigint and number types
 const $positive = $validator(<T extends bigint | number>(value: T) => {
-	if (value < 0) throw new Error("Not a positive number")
+    if (value < 0) throw new Error("Not a positive number")
 })
 
 const $positiveBigInt = $bigint($positive())
@@ -109,23 +109,23 @@ Complex types are also used internally to create `$map`, `$union`, `$exclude` an
 ```ts
 type Complex = { a: number; b: bigint }
 type TypeComplex<T extends Complex> = Type<T[keyof T]> & {
-	complex: T
+    complex: T
 }
 const $complex = $customType(<T extends Complex>(self: TypeComplex<T>, complex: T) => {
-	self.complex = complex
-	return (value: unknown) => {
-		if (
-			!(
-				typeof value === "object" &&
-				value !== null &&
-				"a" in value &&
-				"b" in value &&
-				typeof value.a === "number" &&
-				typeof value.b === "bigint"
-			)
-		)
-			throw new TypeError("Not a valid complex type")
-	}
+    self.complex = complex
+    return (value: unknown) => {
+        if (
+            !(
+                typeof value === "object" &&
+                value !== null &&
+                "a" in value &&
+                "b" in value &&
+                typeof value.a === "number" &&
+                typeof value.b === "bigint"
+            )
+        )
+            throw new TypeError("Not a valid complex type")
+    }
 })
 
 const myComplex = $complex({ a: 1, b: 2n }) // TypeComplex<{ a: number, b: bigint }>
@@ -134,8 +134,8 @@ console.log(myComplex.complex.a) // 1
 
 const unknownType = myComplex as Type<unknown>
 if (unknownType.instanceOf($complex)) {
-	unknownType.complex.a // type = number
-	console.log(unknownType.complex.a) // 1
+    unknownType.complex.a // type = number
+    console.log(unknownType.complex.a) // 1
 }
 ```
 
