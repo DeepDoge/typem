@@ -26,6 +26,10 @@ export function $validator<T, P extends any[]>(validate: (value: T, ...params: P
 
 export function $type<T>(validator: { (value: unknown): asserts value is T }) {
 	return function creator(...validators: Validator<T>[]): Type<T> {
+		function validate(value: T) {
+			validator(value)
+			validators.forEach((validator) => validator.validate(value))
+		}
 		const type: Type<T> = {
 			creator,
 			parseOrThrow(value: T) {
@@ -47,10 +51,6 @@ export function $type<T>(validator: { (value: unknown): asserts value is T }) {
 				return otherCreator === creator
 			},
 		}
-		function validate(value: T) {
-			validator(value)
-			validators.forEach((validator) => validator.validate(value))
-		}
 
 		return type
 	}
@@ -58,6 +58,10 @@ export function $type<T>(validator: { (value: unknown): asserts value is T }) {
 function $complexType<R extends Type<any>, P extends any[] | readonly any[]>(init: (self: R, ...params: P) => (value: unknown) => void) {
 	type T = $infer<R>
 	return function creator(...params: P): R {
+		function validate(value: T) {
+			validator(value)
+			params.forEach((param) => param?.validate?.(value))
+		}
 		const type: Type<T> = {
 			creator,
 			parseOrThrow(value: T) {
@@ -80,10 +84,6 @@ function $complexType<R extends Type<any>, P extends any[] | readonly any[]>(ini
 			},
 		}
 		const validator = init(type as R, ...params)
-		function validate(value: T) {
-			validator(value)
-			params.forEach((param) => param?.validate?.(value))
-		}
 
 		return type as R
 	}
