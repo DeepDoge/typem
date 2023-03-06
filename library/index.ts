@@ -4,60 +4,92 @@ function got(value: unknown) {
 	return `${value}` ? `${typeof value}: ${value}` : typeof value
 }
 
-export type TypeCreator<T> = {
-	(...validators: Validator<T>[]): Type<T>
-}
-export type Type<T> = {
+export type $infer<T extends Type<any> | Validator<any>> = T extends Type<infer U> ? U : T extends Validator<infer U> ? U : never
+
+export type TypeCreator<T> = { (): Type<T> }
+export interface Type<T> {
+	creator: TypeCreator<T>
 	parseOrThrow(value: unknown): T
 	assert(value: unknown): asserts value is T
-	is(value: unknown): value is T
+	validate(value: unknown): value is T
+	instanceOf<U extends TypeCreator<unknown>>(creator: U): this is ReturnType<U>
 }
 
-export type ValidatorCreator<T, P extends any[]> = {
-	(...params: P): Validator<T>
-}
+export type ValidatorCreator<T, P extends any[]> = { (...params: P): Validator<T> }
 export type Validator<T> = {
 	validate(value: T): asserts value is T
 }
 
-export type $infer<T> = T extends Type<infer U> ? U : T extends Validator<infer U> ? U : never
+export function $validator<T, P extends any[]>(validate: (value: T, ...params: P) => asserts value is T): ValidatorCreator<T, P> {
+	return (...params: P) => ({ validate: (value: T) => validate(value, ...params) })
+}
 
-export function $type<T>(validator: Validator<T>["validate"]) {
-	const creator: TypeCreator<T> = (...validators: Validator<T>[]) => {
-		const allValidators = [{ validate: validator }].concat(validators)
-		const validateAll = (value: T) => allValidators.forEach((validator) => validator.validate(value))
+export function $type<T>(validator: { (value: unknown): asserts value is T }) {
+	return function creator(...validators: Validator<T>[]): Type<T> {
 		const type: Type<T> = {
+			creator,
 			parseOrThrow(value: T) {
-				validateAll(value)
+				validate(value)
 				return value
 			},
 			assert(value: T) {
-				validateAll(value)
+				validate(value)
 			},
-			is(value: T): value is T {
+			validate(value: T): value is T {
 				try {
-					validateAll(value)
+					validate(value)
 					return true
 				} catch {
 					return false
 				}
 			},
+			instanceOf(otherCreator: unknown) {
+				return otherCreator === creator
+			},
 		}
+		function validate(value: T) {
+			validator(value)
+			validators.forEach((validator) => validator.validate(value))
+		}
+
 		return type
 	}
-	return creator
 }
-export function $validator<T, P extends any[]>(validator: (value: T, ...params: P) => asserts value is T): (...params: P) => Validator<T> {
-	return (...params: P) => ({ validate: (value: T) => validator(value, ...params) })
-}
-export type TypeWithShape<T, S extends Type<any>[] | Record<string, Type<any>>> = Type<T> & {
-	shape: S
-}
-export function $shape<T, S extends Type<any>[] | Record<string, Type<any>>>(shape: S, validator: Validator<T>["validate"]): TypeWithShape<T, S> {
-	return Object.assign($type(validator)(), { shape })
+function $type2<R extends Type<any>, P extends any[] | readonly any[]>(init: (self: R, ...params: P) => (value: unknown) => void) {
+	type T = $infer<R>
+	return function creator(...params: P): R {
+		const type: Type<T> = {
+			creator,
+			parseOrThrow(value: T) {
+				validate(value)
+				return value
+			},
+			assert(value: T) {
+				validate(value)
+			},
+			validate(value: T): value is T {
+				try {
+					validate(value)
+					return true
+				} catch {
+					return false
+				}
+			},
+			instanceOf(otherCreator: unknown) {
+				return otherCreator === creator
+			},
+		}
+		const validator = init(type as R, ...params)
+		function validate(value: T) {
+			validator(value)
+			params.forEach((param) => param?.validate?.(value))
+		}
+
+		return type as R
+	}
 }
 
-// PRIMATIVE TYPES
+// TYPES
 export const $string = $type<string>((value: unknown) => {
 	if (typeof value !== "string") throw new TypeError(`Expected string, got ${got(value)}`)
 })
@@ -91,8 +123,24 @@ export const $undefined = $type<undefined>((value: unknown) => {
 export const $unknown = $type((_: unknown): asserts _ is unknown => {})
 
 // UNION/EXCLUDE, INTERSECTION TYPES
-export const $union = <T extends Type<any>[]>(...types: T) =>
-	$type<$infer<T[number]>>((value: unknown) => {
+export type TypeUnion<T> = Type<T> & {
+	hasType<T>(creator: TypeCreator<T>): boolean
+}
+const unionsMap = new WeakMap<TypeUnion<any>, Map<TypeCreator<any>, Type<any>[]>>()
+export const $union = $type2(<T extends Type<any>[]>(self: TypeUnion<$infer<T[number]>>, ...types: T) => {
+	const creator2typesMap = unionsMap.get(self) ?? new Map<TypeCreator<any>, Type<any>[]>()
+	unionsMap.set(self, creator2typesMap)
+	for (const type of types) {
+		const typesOfCreator = creator2typesMap.get(type.creator) ?? []
+		creator2typesMap.set(type.creator, typesOfCreator)
+		typesOfCreator.push(type)
+	}
+
+	self.hasType = (other: TypeCreator<any>) => {
+		return unionsMap.get(self)!.has(other)
+	}
+
+	return (value) => {
 		const errors: TypeError[] = []
 		for (const type of types) {
 			try {
@@ -104,37 +152,47 @@ export const $union = <T extends Type<any>[]>(...types: T) =>
 			}
 		}
 		throw new TypeError(`No match with any of the union types:\n${errors.map((error) => `\t${error.message}`).join("\n")}`)
-	})()
+	}
+})
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
+export const $exclude = <T extends TypeUnion<any>, E>(union: T, ...excluded: TypeCreator<E>[]) => {
+	const excludedSet = new Set(excluded)
 
-export const $intersection = <T extends Type<object>[]>(...types: T) =>
-	$type<UnionToIntersection<$infer<T[number]>>>((value: unknown) => {
+	const creator2typesMap = unionsMap.get(union)
+	if (!creator2typesMap) throw new TypeError(`Expected a union type`)
+	const unions: Type<any>[] = []
+	for (const creator of creator2typesMap.keys()) {
+		if (!excludedSet.has(creator)) unions.push(...creator2typesMap.get(creator)!)
+	}
+	return $union(...unions) as TypeUnion<Exclude<$infer<T>, $infer<Type<E>>>>
+}
+export const $intersection = $type2(<T extends TypeShape<object, any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
+	const creatorSet = new Set(types.map((type) => type.creator))
+	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
+	return (value) => {
 		for (const type of types) type.assert(value)
-	})()
+	}
+})
 
-// TODO: Union and Intersection information will be on the Type object itself, so this will just remove the unions from there instead
-export const $exclude = <T extends Type<any>, E extends T[]>(type: T, ...excluded: E) =>
-	$type<Exclude<$infer<T>, $infer<E[number]>>>((value: unknown) => {
-		try {
-			type.assert(value)
-			for (const ex of excluded) ex.assert(value)
-			throw new TypeError(`Expected ${type}, got ${got(value)}`)
-		} catch (error) {
-			return
-		}
-	})()
-
-// SHAPED TYPES
-export const $object = <T extends Record<string, Type<any>>>(shape: T) =>
-	$shape(
-		shape,
-		(
-			value: {
+// CUSTOM TYPES
+export type Shape = Type<any>[] | Record<string, Type<any>>
+export type TypeShape<T, S extends Shape> = Type<T> & {
+	shape: S
+}
+export const $object = $type2(
+	<T extends Record<string, Type<any>>>(
+		self: TypeShape<
+			{
 				[K in { [K in keyof T]: Type<undefined> extends T[K] ? K : never }[keyof T]]?: $infer<T[K]>
 			} & {
 				[K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
-			}
-		) => {
+			},
+			T
+		>,
+		shape: T
+	) => {
+		self.shape = shape
+		return (value) => {
 			if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
 			for (const [key, type] of Object.entries(shape)) {
 				try {
@@ -145,10 +203,11 @@ export const $object = <T extends Record<string, Type<any>>>(shape: T) =>
 				}
 			}
 		}
-	)
-
-export const $tuple = <T extends Type<any>[]>(...types: T) =>
-	$shape(types, (value: { [k in keyof T]: $infer<T[k]> }) => {
+	}
+)
+export const $tuple = $type2(<T extends Type<any>[]>(self: TypeShape<{ [k in keyof T]: $infer<T[k]> }, T>, ...types: T) => {
+	self.shape = types
+	return (value) => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected a tuple array, got ${got(value)}`)
 		if (value.length !== types.length)
 			throw new TypeError(`Expected tuple of length ${types.length}, got ${got(value)} with length ${value.length}`)
@@ -160,11 +219,15 @@ export const $tuple = <T extends Type<any>[]>(...types: T) =>
 				throw error
 			}
 		}
-	})
+	}
+})
 
-// IDK
-export const $array = <T extends Type<any>>(type: T) =>
-	$type<$infer<T>[]>((value: unknown) => {
+export type TypeArray<T extends Type<any>> = Type<$infer<T>[]> & {
+	valueType: T
+}
+export const $array = $type2(<T extends Type<any>>(self: TypeArray<T>, type: T) => {
+	self.valueType = type
+	return (value) => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${got(value)}`)
 		for (let i = 0; i < value.length; i++) {
 			try {
@@ -174,46 +237,91 @@ export const $array = <T extends Type<any>>(type: T) =>
 				throw error
 			}
 		}
-	})()
-
-export const $record = <K extends Type<any>, V extends Type<any>>(keyType: K, valueType: V) =>
-	$type<Record<$infer<K>, $infer<V>>>((value: unknown) => {
-		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
-		for (const [key, val] of Object.entries(value)) {
-			keyType.assert(key)
-			valueType.assert(val)
-		}
-	})()
-
-export const $map = <K extends Type<any>, V extends Type<any>>(keyType: K, valueType: V) =>
-	$type<Map<$infer<K>, $infer<V>>>((value: unknown) => {
-		if (!(value instanceof Map)) throw new TypeError(`Expected Map, got ${got(value)}`)
-		for (const [key, val] of value) {
-			keyType.assert(key)
-			valueType.assert(val)
-		}
-	})()
-
-export const $set = <T extends Type<any>>(type: T) =>
-	$type<Set<$infer<T>>>((value: unknown) => {
+	}
+})
+export type TypeSet<T extends Type<any>> = Type<Set<$infer<T>>> & {
+	valueType: T
+}
+export const $set = $type2(<T extends Type<any>>(self: TypeSet<T>, type: T) => {
+	self.valueType = type
+	return (value) => {
 		if (!(value instanceof Set)) throw new TypeError(`Expected Set, got ${got(value)}`)
-		for (const v of value) type.assert(v)
-	})()
+		value.forEach((item, index) => {
+			try {
+				type.assert(item)
+			} catch (error) {
+				if (error instanceof TypeError) throw new TypeError(`Set[${index}]: ${error.message}`)
+				throw error
+			}
+		})
+	}
+})
 
-export const $instanceOf = <T extends new (...args: any[]) => any>(constructor: T) =>
-	$type<InstanceType<T>>((value: unknown) => {
+export type TypeRecord<K extends Type<any>, V extends Type<any>> = Type<Record<$infer<K>, $infer<V>>> & {
+	keyType: K
+	valueType: V
+}
+export const $record = $type2(<K extends Type<string | number>, V extends Type<any>>(self: TypeRecord<K, V>, keyType: K, valueType: V) => {
+	self.keyType = keyType
+	self.valueType = valueType
+	return (value) => {
+		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
+		for (const pair of Object.entries(value)) {
+			const [key, value] = pair
+			keyType.assert(key)
+			valueType.assert(value)
+		}
+	}
+})
+export type TypeMap<K extends Type<any>, V extends Type<any>> = Type<Map<$infer<K>, $infer<V>>> & {
+	keyType: K
+	valueType: V
+}
+export const $map = $type2(<K extends Type<any>, V extends Type<any>>(self: TypeMap<K, V>, keyType: K, valueType: V) => {
+	self.keyType = keyType
+	self.valueType = valueType
+	return (value) => {
+		if (!(value instanceof Map)) throw new TypeError(`Expected Map, got ${got(value)}`)
+		for (const pair of value) {
+			const [key, value] = pair
+			keyType.assert(key)
+			valueType.assert(value)
+		}
+	}
+})
+
+type Constructor = new (...args: any[]) => any
+export type TypeInstance<T extends Constructor> = Type<InstanceType<T>> & {
+	constructor: T
+}
+export const $instanceOf = $type2(<T extends Constructor>(self: TypeInstance<T>, constructor: T) => {
+	self.constructor = constructor
+	return (value: unknown) => {
 		if (!(value instanceof constructor)) throw new TypeError(`Expected instance of ${constructor.name}, got ${got(value)}`)
-	})()
+	}
+})
 
-export const $enum = <T extends readonly (string | number)[]>(...values: T) =>
-	$type<T[number]>((value: unknown) => {
+export type Enum = readonly (string | number)[]
+export type TypeEnum<T extends Enum> = Type<T[number]> & {
+	enum: T
+}
+export const $enum = $type2(<T extends Enum>(self: TypeEnum<T>, ...values: T) => {
+	self.enum = values
+	return (value) => {
 		if (!values.includes(value as never)) throw new TypeError(`Expected one of [${values.join(", ")}], got ${got(value)}`)
-	})()
+	}
+})
 
-export const $literal = <T extends string | number | boolean | null | undefined | object | symbol | bigint>(literal: T) =>
-	$type<T>((value: unknown) => {
+export type Literal = string | number | boolean | null | undefined | object | symbol | bigint
+export type TypeLiteral<T extends Literal> = Type<T> & {
+	literal: T
+}
+export const $literal = $type2(<T extends Literal>(self: TypeLiteral<T>, literal: T) => {
+	self.literal = literal
+	return (value: unknown) => {
 		if (value !== literal) throw new TypeError(`Expected literal ${literal?.toString()}, got ${got(value)}`)
-	})()
+	}
+})
 
 // VALIDATION TYPES
 export const $gt = $validator(<T extends number | bigint>(value: T, gt: T) => {
@@ -249,9 +357,6 @@ export const $lengthRange = $validator(<T extends string | Array<any>>(value: T,
 		throw new TypeError(`Expected ${got(value)} to have length between ${minLength} and ${maxLength}`)
 })
 
-export const $regex = $validator(<T extends string>(value: T, regex: RegExp) => {
-	if (!regex.test(value)) throw new TypeError(`Expected ${got(value)} to match ${regex}`)
-})
 export const $startsWith = $validator(<T extends string, P extends string>(value: T, prefix: P) => {
 	if (!value.startsWith(prefix)) throw new TypeError(`Expected ${got(value)} to start with ${prefix}`)
 })
@@ -262,26 +367,13 @@ export const $contains = $validator(<T extends string, S extends string>(value: 
 	if (!value.includes(substring)) throw new TypeError(`Expected ${got(value)} to contain ${substring}`)
 })
 
-export const $email = $validator(<T extends string>(value: T) => {
-	if (
-		!/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
-			value
-		)
-	)
-		throw new TypeError(`Expected ${got(value)} to be a valid email address`)
+export const $regex = $validator(<T extends string>(value: T, regex: RegExp) => {
+	if (!regex.test(value)) throw new TypeError(`Expected ${got(value)} to match ${regex}`)
 })
-export const $url = $validator(<T extends string>(value: T) => {
-	if (!/^(https?:\/\/)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+/.test(value)) throw new TypeError(`Expected ${got(value)} to be a valid URL`)
-})
-export const $uri = $validator(<T extends string>(value: T) => {
-	if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) throw new TypeError(`Expected ${got(value)} to be a valid URI`)
-})
-export const $dateISO = $validator(<T extends string>(value: T) => {
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new TypeError(`Expected ${got(value)} to be a valid ISO date`)
-})
-export const $timeISO = $validator(<T extends string>(value: T) => {
-	if (!/^\d{2}:\d{2}:\d{2}$/.test(value)) throw new TypeError(`Expected ${got(value)} to be a valid ISO time`)
-})
-export const $dateTimeISO = $validator(<T extends string>(value: T) => {
-	if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) throw new TypeError(`Expected ${got(value)} to be a valid ISO date-time`)
-})
+export const $email = () =>
+	$regex(/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/)
+export const $url = () => $regex(/^(https?:\/\/)?[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+/)
+export const $uri = () => $regex(/^[a-zA-Z][a-zA-Z0-9+.-]*:/)
+export const $dateISO = () => $regex(/^\d{4}-\d{2}-\d{2}$/)
+export const $timeISO = () => $regex(/^\d{2}:\d{2}:\d{2}$/)
+export const $dateTimeISO = () => $regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
