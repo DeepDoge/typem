@@ -55,7 +55,7 @@ export function $type<T>(validator: { (value: unknown): asserts value is T }) {
 		return type
 	}
 }
-function $customType<R extends Type<any>, P extends any[] | readonly any[]>(init: (self: R, ...params: P) => (value: unknown) => void) {
+function $complexType<R extends Type<any>, P extends any[] | readonly any[]>(init: (self: R, ...params: P) => (value: unknown) => void) {
 	type T = $infer<R>
 	return function creator(...params: P): R {
 		const type: Type<T> = {
@@ -127,7 +127,7 @@ export type TypeUnion<T> = Type<T> & {
 	hasType<T>(creator: TypeCreator<T>): boolean
 }
 const unionsMap = new WeakMap<TypeUnion<any>, Map<TypeCreator<any>, Type<any>[]>>()
-export const $union = $customType(<T extends Type<any>[]>(self: TypeUnion<$infer<T[number]>>, ...types: T) => {
+export const $union = $complexType(<T extends Type<any>[]>(self: TypeUnion<$infer<T[number]>>, ...types: T) => {
 	const creator2typesMap = unionsMap.get(self) ?? new Map<TypeCreator<any>, Type<any>[]>()
 	unionsMap.set(self, creator2typesMap)
 	for (const type of types) {
@@ -166,7 +166,7 @@ export const $exclude = <T extends TypeUnion<any>, E>(union: T, ...excluded: Typ
 	}
 	return $union(...unions) as TypeUnion<Exclude<$infer<T>, $infer<Type<E>>>>
 }
-export const $intersection = $customType(<T extends TypeShape<object, any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
+export const $intersection = $complexType(<T extends TypeShape<object, any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
 	const creatorSet = new Set(types.map((type) => type.creator))
 	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
 	return (value) => {
@@ -174,12 +174,12 @@ export const $intersection = $customType(<T extends TypeShape<object, any>[]>(se
 	}
 })
 
-// CUSTOM TYPES
+// COMPLEX TYPES
 export type Shape = Type<any>[] | Record<string, Type<any>>
 export type TypeShape<T, S extends Shape> = Type<T> & {
 	shape: S
 }
-export const $object = $customType(
+export const $object = $complexType(
 	<T extends Record<string, Type<any>>>(
 		self: TypeShape<
 			{
@@ -205,7 +205,7 @@ export const $object = $customType(
 		}
 	}
 )
-export const $tuple = $customType(<T extends Type<any>[]>(self: TypeShape<{ [k in keyof T]: $infer<T[k]> }, T>, ...types: T) => {
+export const $tuple = $complexType(<T extends Type<any>[]>(self: TypeShape<{ [k in keyof T]: $infer<T[k]> }, T>, ...types: T) => {
 	self.shape = types
 	return (value) => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected a tuple array, got ${got(value)}`)
@@ -225,7 +225,7 @@ export const $tuple = $customType(<T extends Type<any>[]>(self: TypeShape<{ [k i
 export type TypeArray<T extends Type<any>> = Type<$infer<T>[]> & {
 	valueType: T
 }
-export const $array = $customType(<T extends Type<any>>(self: TypeArray<T>, type: T) => {
+export const $array = $complexType(<T extends Type<any>>(self: TypeArray<T>, type: T) => {
 	self.valueType = type
 	return (value) => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected array, got ${got(value)}`)
@@ -242,7 +242,7 @@ export const $array = $customType(<T extends Type<any>>(self: TypeArray<T>, type
 export type TypeSet<T extends Type<any>> = Type<Set<$infer<T>>> & {
 	valueType: T
 }
-export const $set = $customType(<T extends Type<any>>(self: TypeSet<T>, type: T) => {
+export const $set = $complexType(<T extends Type<any>>(self: TypeSet<T>, type: T) => {
 	self.valueType = type
 	return (value) => {
 		if (!(value instanceof Set)) throw new TypeError(`Expected Set, got ${got(value)}`)
@@ -261,7 +261,7 @@ export type TypeRecord<K extends Type<any>, V extends Type<any>> = Type<Record<$
 	keyType: K
 	valueType: V
 }
-export const $record = $customType(<K extends Type<string | number>, V extends Type<any>>(self: TypeRecord<K, V>, keyType: K, valueType: V) => {
+export const $record = $complexType(<K extends Type<string | number>, V extends Type<any>>(self: TypeRecord<K, V>, keyType: K, valueType: V) => {
 	self.keyType = keyType
 	self.valueType = valueType
 	return (value) => {
@@ -277,7 +277,7 @@ export type TypeMap<K extends Type<any>, V extends Type<any>> = Type<Map<$infer<
 	keyType: K
 	valueType: V
 }
-export const $map = $customType(<K extends Type<any>, V extends Type<any>>(self: TypeMap<K, V>, keyType: K, valueType: V) => {
+export const $map = $complexType(<K extends Type<any>, V extends Type<any>>(self: TypeMap<K, V>, keyType: K, valueType: V) => {
 	self.keyType = keyType
 	self.valueType = valueType
 	return (value) => {
@@ -294,7 +294,7 @@ type Constructor = new (...args: any[]) => any
 export type TypeInstance<T extends Constructor> = Type<InstanceType<T>> & {
 	constructor: T
 }
-export const $instanceOf = $customType(<T extends Constructor>(self: TypeInstance<T>, constructor: T) => {
+export const $instanceOf = $complexType(<T extends Constructor>(self: TypeInstance<T>, constructor: T) => {
 	self.constructor = constructor
 	return (value: unknown) => {
 		if (!(value instanceof constructor)) throw new TypeError(`Expected instance of ${constructor.name}, got ${got(value)}`)
@@ -305,7 +305,7 @@ export type Enum = readonly (string | number)[]
 export type TypeEnum<T extends Enum> = Type<T[number]> & {
 	enum: T
 }
-export const $enum = $customType(<T extends Enum>(self: TypeEnum<T>, ...values: T) => {
+export const $enum = $complexType(<T extends Enum>(self: TypeEnum<T>, ...values: T) => {
 	self.enum = values
 	return (value) => {
 		if (!values.includes(value as never)) throw new TypeError(`Expected one of [${values.join(", ")}], got ${got(value)}`)
@@ -316,7 +316,7 @@ export type Literal = string | number | boolean | null | undefined | object | sy
 export type TypeLiteral<T extends Literal> = Type<T> & {
 	literal: T
 }
-export const $literal = $customType(<T extends Literal>(self: TypeLiteral<T>, literal: T) => {
+export const $literal = $complexType(<T extends Literal>(self: TypeLiteral<T>, literal: T) => {
 	self.literal = literal
 	return (value: unknown) => {
 		if (value !== literal) throw new TypeError(`Expected literal ${literal?.toString()}, got ${got(value)}`)
