@@ -84,6 +84,11 @@ const value = $member.assert(unknownValue) // throws error if value is invalid
 value.name // string
 ```
 
+Also, you can use `$infer` type to get the type of a `Type`
+```ts
+type TypeOfMember = $infer<typeof $member>
+```
+
 ## Creating Types and Validators
 
 You can create your own Types or Validators
