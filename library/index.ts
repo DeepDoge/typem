@@ -181,7 +181,7 @@ export const $object = $complexType(<T extends Record<string, Type<any>>>(self: 
 		}
 	}
 })
-export type TypeTuple<T extends Type<any>[]> = Type<$infer<T[number]>> & {
+export type TypeTuple<T extends Type<any>[]> = Type<{ [k in keyof T]: $infer<T[k]> }> & {
 	shape: T
 }
 export const $tuple = $complexType(<T extends Type<any>[]>(self: TypeTuple<T>, ...types: T) => {
