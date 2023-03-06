@@ -84,9 +84,9 @@ const value = $member.assert(unknownValue) // throws error if value is invalid
 value.name // string
 ```
 
-## Custom types and validators
+## Creating Types and Validators
 
-You can create your own types or validators
+You can create your own Types or Validators
 
 ```ts
 class MyClass {}
@@ -101,6 +101,42 @@ const $positive = $validator(<T extends bigint | number>(value: T) => {
 
 const $positiveBigInt = $bigint($positive())
 const $positiveNumber = $number($positive())
+```
+
+If you have a complex type, you can use `$customType` instead of `$type`<br/>
+Complex types are also used internally to create `$map`, `$union`, `$exclude` and etc.
+
+```ts
+type Complex = { a: number; b: bigint }
+type TypeComplex<T extends Complex> = Type<T[keyof T]> & {
+	complex: T
+}
+const $complex = $customType(<T extends Complex>(self: TypeComplex<T>, complex: T) => {
+	self.complex = complex
+	return (value: unknown) => {
+		if (
+			!(
+				typeof value === "object" &&
+				value !== null &&
+				"a" in value &&
+				"b" in value &&
+				typeof value.a === "number" &&
+				typeof value.b === "bigint"
+			)
+		)
+			throw new TypeError("Not a valid complex type")
+	}
+})
+
+const myComplex = $complex({ a: 1, b: 2n }) // TypeComplex<{ a: number, b: bigint }>
+myComplex.complex.a // type = 1
+console.log(myComplex.complex.a) // 1
+
+const unknownType = myComplex as Type<unknown>
+if (unknownType.instanceOf($complex)) {
+	unknownType.complex.a // type = number
+	console.log(unknownType.complex.a) // 1
+}
 ```
 
 # Inspired by
