@@ -122,22 +122,14 @@ export const $undefined = $type<undefined>((value: unknown) => {
 })
 export const $unknown = $type((_: unknown): asserts _ is unknown => {})
 
-// UNION/EXCLUDE, INTERSECTION TYPES
+// UNION AND INTERSECTION TYPES
 export type TypeUnion<T> = Type<T> & {
 	hasType<T>(creator: TypeCreator<T>): boolean
 }
-const unionsMap = new WeakMap<TypeUnion<any>, Map<TypeCreator<any>, Type<any>[]>>()
 export const $union = $complexType(<T extends Type<any>[]>(self: TypeUnion<$infer<T[number]>>, ...types: T) => {
-	const creator2typesMap = unionsMap.get(self) ?? new Map<TypeCreator<any>, Type<any>[]>()
-	unionsMap.set(self, creator2typesMap)
-	for (const type of types) {
-		const typesOfCreator = creator2typesMap.get(type.creator) ?? []
-		creator2typesMap.set(type.creator, typesOfCreator)
-		typesOfCreator.push(type)
-	}
-
+	const unions = new Set(types.map((type) => type.creator))
 	self.hasType = (other: TypeCreator<any>) => {
-		return unionsMap.get(self)!.has(other)
+		return unions.has(other)
 	}
 
 	return (value) => {
@@ -155,17 +147,6 @@ export const $union = $complexType(<T extends Type<any>[]>(self: TypeUnion<$infe
 	}
 })
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
-/* export const $exclude = <T extends TypeUnion<any>, E>(union: T, ...excluded: TypeCreator<E>[]) => {
-	const excludedSet = new Set(excluded)
-
-	const creator2typesMap = unionsMap.get(union)
-	if (!creator2typesMap) throw new TypeError(`Expected a union type`)
-	const unions: Type<any>[] = []
-	for (const creator of creator2typesMap.keys()) {
-		if (!excludedSet.has(creator)) unions.push(...creator2typesMap.get(creator)!)
-	}
-	return $union(...unions) as TypeUnion<Exclude<$infer<T>, $infer<Type<E>>>>
-} */
 export const $intersection = $complexType(<T extends TypeShape<object, any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
 	const creatorSet = new Set(types.map((type) => type.creator))
 	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
