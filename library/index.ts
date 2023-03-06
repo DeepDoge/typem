@@ -123,11 +123,13 @@ export const $undefined = $type<undefined>((value: unknown) => {
 export const $unknown = $type((_: unknown): asserts _ is unknown => {})
 
 // UNION AND INTERSECTION TYPES
-export type TypeUnion<T> = Type<T> & {
+export type TypeUnion<T extends readonly Type<any>[]> = Type<$infer<T[number]>> & {
+	unions: T
 	hasType<T>(creator: TypeCreator<T>): boolean
 }
-export const $union = $complexType(<T extends Type<any>[]>(self: TypeUnion<$infer<T[number]>>, ...types: T) => {
+export const $union = $complexType(<T extends readonly Type<any>[]>(self: TypeUnion<T>, ...types: T) => {
 	const unions = new Set(types.map((type) => type.creator))
+	self.unions = types
 	self.hasType = (other: TypeCreator<any>) => {
 		return unions.has(other)
 	}
@@ -147,7 +149,7 @@ export const $union = $complexType(<T extends Type<any>[]>(self: TypeUnion<$infe
 	}
 })
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
-export const $intersection = $complexType(<T extends TypeShape<object, any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
+export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
 	const creatorSet = new Set(types.map((type) => type.creator))
 	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
 	return (value) => {
@@ -156,37 +158,33 @@ export const $intersection = $complexType(<T extends TypeShape<object, any>[]>(s
 })
 
 // COMPLEX TYPES
-export type Shape = Type<any>[] | Record<string, Type<any>>
-export type TypeShape<T, S extends Shape> = Type<T> & {
-	shape: S
+export type TypeObject<T extends Record<string, Type<any>>> = Type<
+	{
+		[K in { [K in keyof T]: Type<undefined> extends T[K] ? K : never }[keyof T]]?: $infer<T[K]>
+	} & {
+		[K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
+	}
+> & {
+	shape: T
 }
-export const $object = $complexType(
-	<T extends Record<string, Type<any>>>(
-		self: TypeShape<
-			{
-				[K in { [K in keyof T]: Type<undefined> extends T[K] ? K : never }[keyof T]]?: $infer<T[K]>
-			} & {
-				[K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
-			},
-			T
-		>,
-		shape: T
-	) => {
-		self.shape = shape
-		return (value) => {
-			if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
-			for (const [key, type] of Object.entries(shape)) {
-				try {
-					type.parseOrThrow(value[key as keyof typeof value])
-				} catch (error) {
-					if (error instanceof TypeError) throw new TypeError(`${key}: ${error.message}`)
-					throw error
-				}
+export const $object = $complexType(<T extends Record<string, Type<any>>>(self: TypeObject<T>, shape: T) => {
+	self.shape = shape
+	return (value) => {
+		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
+		for (const [key, type] of Object.entries(shape)) {
+			try {
+				type.parseOrThrow(value[key as keyof typeof value])
+			} catch (error) {
+				if (error instanceof TypeError) throw new TypeError(`${key}: ${error.message}`)
+				throw error
 			}
 		}
 	}
-)
-export const $tuple = $complexType(<T extends Type<any>[]>(self: TypeShape<{ [k in keyof T]: $infer<T[k]> }, T>, ...types: T) => {
+})
+export type TypeTuple<T extends Type<any>[]> = Type<$infer<T[number]>> & {
+	shape: T
+}
+export const $tuple = $complexType(<T extends Type<any>[]>(self: TypeTuple<T>, ...types: T) => {
 	self.shape = types
 	return (value) => {
 		if (!Array.isArray(value)) throw new TypeError(`Expected a tuple array, got ${got(value)}`)
