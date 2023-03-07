@@ -1,12 +1,12 @@
 # What is this?
 
-Master Validator is a basic runtime type checker for TypeScript.
+This is a better runtime type checker for TypeScript.
 Easy to use and easy to extend.
 
 # Installation
 
 ```bash
-npm install https://github.com/DeepDoge/master-validator.git -D
+npm install https://github.com/DeepDoge/master-ts-types.git -D
 ```
 
 # Usage
