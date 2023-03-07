@@ -1,7 +1,6 @@
 # Master-TS Types
 
-This is a better runtime type checker for TypeScript.
-Easy to use and easy to extend.
+An easy to use and extend runtime type checker for TypeScript.
 
 # Installation
 
