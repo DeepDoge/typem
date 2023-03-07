@@ -1,4 +1,4 @@
-# What is this?
+# MASTER-TS Types
 
 This is a better runtime type checker for TypeScript.
 Easy to use and easy to extend.
