@@ -158,11 +158,12 @@ export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: Ty
 })
 
 // COMPLEX TYPES
+type _Helper<T extends Record<string, Type<any>>> = { [K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]> }
 export type TypeObject<T extends Record<string, Type<any>>> = Type<
 	{
-		[K in { [K in keyof T]: Type<undefined> extends T[K] ? K : never }[keyof T]]?: $infer<T[K]>
+		[K in { [K in keyof _Helper<T>]: undefined extends _Helper<T>[K] ? K : never }[keyof _Helper<T>]]?: $infer<T[K]>
 	} & {
-		[K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
+		[K in { [K in keyof _Helper<T>]: undefined extends _Helper<T>[K] ? never : K }[keyof _Helper<T>]]: $infer<T[K]>
 	}
 > & {
 	shape: T
