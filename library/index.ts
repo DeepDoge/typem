@@ -55,7 +55,7 @@ export function $type<T>(validator: { (value: unknown): asserts value is T }) {
 		return type
 	}
 }
-function $complexType<R extends Type<any>, P extends any[] | readonly any[]>(init: (self: R, ...params: P) => (value: unknown) => void) {
+export function $complexType<R extends Type<any>, P extends any[] | readonly any[]>(init: (self: R, ...params: P) => (value: unknown) => void) {
 	type T = $infer<R>
 	return function creator(...params: P): R {
 		function validate(value: T) {
