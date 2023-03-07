@@ -1,15 +1,5 @@
 {
-  "type": "module",
-  "name": "master-validator",
-  "version": "1.0.0",
-  "description": "See README.md",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DeepDoge/master-validator.git"
-  },
-  "bugs": {
-    "url": "https://github.com/DeepDoge/master-validator/issues"
-  },
-  "homepage": "https://github.com/DeepDoge/master-validator#readme",
-  "devDependencies": {}
+	"type": "module",
+	"name": "master-ts-types",
+	"version": "1.0.0"
 }
