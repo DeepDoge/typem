@@ -46,7 +46,7 @@ export function $type<T>(validator: { (value: unknown): asserts value is T }) {
 				}
 			},
 			instanceOf(otherCreator: unknown) {
-				return otherCreator === creator
+				return otherCreator === type.creator
 			},
 		}
 
@@ -78,7 +78,7 @@ export function $complexType<R extends Type<any>, P extends any[] | readonly any
 				}
 			},
 			instanceOf(otherCreator: unknown) {
-				return otherCreator === creator
+				return otherCreator === type.creator
 			},
 		}
 		const validator = init(type as R, ...params)
@@ -148,17 +148,13 @@ export const $union = $complexType(<T extends readonly Type<any>[]>(self: TypeUn
 })
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
 type ArrayToIntersection<U extends any[]> = U extends [infer F extends Type<any>, ...infer R] ? $infer<F> & ArrayToIntersection<R> : {}
-export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: TypeObject<ArrayToIntersection<T>>, ...types: T) => {
-	const creatorSet = new Set(types.map((type) => type.creator))
-	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
-	self.shape = Object.assign({}, ...types.map((type) => type.shape))
-	return (value) => {
-		for (const type of types) type.assert(value)
-	}
-})
+export const $intersection = <T extends TypeObject<any>[]>(...types: T) =>
+	$object(Object.assign({}, ...types.map((type) => type.shape))) as TypeObject<ArrayToIntersection<T>>
 
 // COMPLEX TYPES
-type _Helper<T extends Record<PropertyKey, Type<any>>> = { [K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]> }
+type _Helper<T extends Record<PropertyKey, Type<any>>> = {
+	[K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]>
+}
 export type TypeObject<T extends Record<PropertyKey, Type<any>>> = Type<
 	{
 		[K in { [K in keyof _Helper<T>]: undefined extends _Helper<T>[K] ? K : never }[keyof _Helper<T>]]?: $infer<T[K]>
