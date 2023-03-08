@@ -151,6 +151,7 @@ type ArrayToIntersection<U extends any[]> = U extends [infer F extends Type<any>
 export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: TypeObject<ArrayToIntersection<T>>, ...types: T) => {
 	const creatorSet = new Set(types.map((type) => type.creator))
 	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
+	self.shape = Object.assign({}, ...types.map((type) => type.shape))
 	return (value) => {
 		for (const type of types) type.assert(value)
 	}
