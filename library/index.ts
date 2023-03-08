@@ -1,5 +1,3 @@
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void ? I : never
-
 function got(value: unknown) {
 	return `${value}` ? `${typeof value}: ${value}` : typeof value
 }
@@ -149,7 +147,8 @@ export const $union = $complexType(<T extends readonly Type<any>[]>(self: TypeUn
 	}
 })
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
-export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: Type<UnionToIntersection<$infer<T[number]>>>, ...types: T) => {
+type ArrayToIntersection<U extends any[]> = U extends [infer F extends Type<any>, ...infer R] ? $infer<F> & ArrayToIntersection<R> : {}
+export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: TypeObject<ArrayToIntersection<T>>, ...types: T) => {
 	const creatorSet = new Set(types.map((type) => type.creator))
 	self.instanceOf = (creator) => creatorSet.has(creator as TypeCreator<object>)
 	return (value) => {
@@ -158,8 +157,8 @@ export const $intersection = $complexType(<T extends TypeObject<any>[]>(self: Ty
 })
 
 // COMPLEX TYPES
-type _Helper<T extends Record<string, Type<any>>> = { [K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]> }
-export type TypeObject<T extends Record<string, Type<any>>> = Type<
+type _Helper<T extends Record<PropertyKey, Type<any>>> = { [K in { [K in keyof T]: Type<undefined> extends T[K] ? never : K }[keyof T]]: $infer<T[K]> }
+export type TypeObject<T extends Record<PropertyKey, Type<any>>> = Type<
 	{
 		[K in { [K in keyof _Helper<T>]: undefined extends _Helper<T>[K] ? K : never }[keyof _Helper<T>]]?: $infer<T[K]>
 	} & {
@@ -168,7 +167,7 @@ export type TypeObject<T extends Record<string, Type<any>>> = Type<
 > & {
 	shape: T
 }
-export const $object = $complexType(<T extends Record<string, Type<any>>>(self: TypeObject<T>, shape: T) => {
+export const $object = $complexType(<T extends Record<PropertyKey, Type<any>>>(self: TypeObject<T>, shape: T) => {
 	self.shape = shape
 	return (value) => {
 		if (typeof value !== "object" || value === null) throw new TypeError(`Expected object, got ${got(value)}`)
