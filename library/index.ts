@@ -120,15 +120,14 @@ export const $undefined = $type<undefined>((value: unknown) => {
 })
 export const $unknown = $type((_: unknown): asserts _ is unknown => {})
 
-// UNION AND INTERSECTION TYPES
 export type TypeUnion<T extends readonly Type<any>[]> = Type<$infer<T[number]>> & {
 	unions: T
-	hasType<T>(creator: TypeCreator<T>): boolean
 }
 export const $union = $complexType(<T extends readonly Type<any>[]>(self: TypeUnion<T>, ...types: T) => {
 	const unions = new Set(types.map((type) => type.creator))
 	self.unions = types
-	self.hasType = (other: TypeCreator<any>) => {
+	self.instanceOf = (other: TypeCreator<any>) => {
+		if (other === $union) return true
 		return unions.has(other)
 	}
 
@@ -147,9 +146,6 @@ export const $union = $complexType(<T extends readonly Type<any>[]>(self: TypeUn
 	}
 })
 export const $optional = <T extends Type<any>>(type: T) => $union(type, $null(), $undefined())
-type ArrayToIntersection<U extends any[]> = U extends [infer F extends Type<any>, ...infer R] ? $infer<F> & ArrayToIntersection<R> : {}
-export const $intersection = <T extends TypeObject<any>[]>(...types: T) =>
-	$object(Object.assign({}, ...types.map((type) => type.shape))) as TypeObject<ArrayToIntersection<T>>
 
 // COMPLEX TYPES
 type _Helper<T extends Record<PropertyKey, Type<any>>> = {
@@ -197,6 +193,11 @@ export const $tuple = $complexType(<T extends Type<any>[]>(self: TypeTuple<T>, .
 		}
 	}
 })
+type ArrayToIntersection<U extends TypeObject<any>[]> = U extends [infer F extends TypeObject<any>, ...infer R extends TypeObject<any>[]]
+	? F["shape"] & ArrayToIntersection<R>
+	: {}
+export const $intersection = <T extends TypeObject<any>[]>(...types: T) =>
+	$object(Object.assign({}, ...types.map((type) => type.shape))) as TypeObject<ArrayToIntersection<T>>
 
 export type TypeArray<T extends Type<any>> = Type<$infer<T>[]> & {
 	valueType: T
