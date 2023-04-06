@@ -19,7 +19,6 @@
 		"strictFunctionTypes": true,
 		"strictNullChecks": true,
 		"strictPropertyInitialization": true,
-		"stripInternal": true,
 		/* NO IMPLICIT */
 		"noImplicitReturns": true,
 		"noImplicitAny": true,
