@@ -1,4 +1,12 @@
 {
 	"type": "module",
-	"name": "master-ts-types"
+	"name": "master-ts-types",
+	"scripts": {
+		"format": "prettier -w ./"
+	},
+	"devDependencies": {
+		"prettier": "latest",
+		"prettier-plugin-organize-imports": "latest",
+		"@typescript-eslint/eslint-plugin": "latest"
+	}
 }
