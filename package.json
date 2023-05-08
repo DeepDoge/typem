@@ -5,8 +5,8 @@
 		"format": "prettier -w ./"
 	},
 	"devDependencies": {
-		"prettier": "latest",
-		"prettier-plugin-organize-imports": "latest",
-		"@typescript-eslint/eslint-plugin": "latest"
+		"prettier": "^2.8.8",
+		"prettier-plugin-organize-imports": "^3.2.2",
+		"@typescript-eslint/eslint-plugin": "^5.59.2"
 	}
 }
