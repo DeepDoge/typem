@@ -5,7 +5,7 @@ An easy to use and extend runtime type checker for TypeScript.
 # Installation
 
 ```bash
-npm install https://github.com/DeepDoge/master-ts-types.git -D
+npm i github:DeepDoge/master-ts-types#0.0.1 -D
 ```
 
 # Usage
