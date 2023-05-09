@@ -4,7 +4,7 @@ An easy to use and extend runtime type checker for TypeScript.
 
 # Installation
 
-[Install Instructions](https://github.com/DeepDoge/typify-contracts/releases)
+[Install Instructions](https://github.com/DeepDoge/master-ts-types/releases)
 
 # Usage
 
