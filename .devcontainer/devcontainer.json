@@ -9,7 +9,7 @@
 	},
 	"customizations": {
 		"vscode": {
-			"extensions": ["eamodio.gitlens", "esbenp.prettier-vscode", "dbaeumer.vscode-eslint"]
+			"extensions": ["esbenp.prettier-vscode", "dbaeumer.vscode-eslint"]
 		}
 	},
 
