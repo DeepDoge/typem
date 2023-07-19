@@ -1,4 +1,4 @@
-# Master-TS Types
+# TypeSpirit
 
 An easy to use and extend runtime type checker for TypeScript.
 
