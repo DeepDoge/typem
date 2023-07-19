@@ -1,6 +1,6 @@
 {
 	"type": "module",
-	"name": "master-ts-types",
+	"name": "type-spirit",
 	"scripts": {
 		"format": "prettier -w ./"
 	},
