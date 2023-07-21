@@ -2,6 +2,8 @@
 
 An easy to use and extend runtime type checker for TypeScript, with support for type metadata.
 
+Checkout the source code yourself, it's just one file. 
+
 # Installation
 
 [Install Instructions](https://github.com/DeepDoge/typem/releases)
