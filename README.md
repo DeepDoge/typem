@@ -1,10 +1,10 @@
-# TypeSpirit
+# Typem(irror)
 
 An easy to use and extend runtime type checker for TypeScript.
 
 # Installation
 
-[Install Instructions](https://github.com/DeepDoge/master-ts-types/releases)
+[Install Instructions](https://github.com/DeepDoge/typem/releases)
 
 # Usage
 
