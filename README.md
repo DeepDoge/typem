@@ -1,6 +1,6 @@
 # Typem(irror)
 
-An easy to use and extend runtime type checker for TypeScript.
+An easy to use and extend runtime type checker for TypeScript, with support for type metadata.
 
 # Installation
 
