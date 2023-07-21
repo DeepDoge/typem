@@ -1,6 +1,6 @@
 {
 	"type": "module",
-	"name": "type-spirit",
+	"name": "typem",
 	"scripts": {
 		"format": "prettier -w ./"
 	},
