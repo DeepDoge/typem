@@ -7,7 +7,7 @@ export type $infer<T extends Type<any> | Validator<any>> = T extends Type<infer 
 export type TypeCreator<T> = { (...args: any): Type<T> }
 export interface Type<T> {
 	creator: TypeCreator<T>
-	parseOrThrow(value: unknown): T
+	parseOrThrow(value: unknown): T // TODO: rename to returnOrThrow
 	assert(value: unknown): asserts value is T
 	validate(value: unknown): value is T
 	instanceOf<U extends TypeCreator<any>>(creator: U): this is ReturnType<U>
