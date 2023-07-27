@@ -1,4 +1,4 @@
-# Typem(irror)
+# Typem(odel)
 
 An easy to use and extend runtime type checker for TypeScript, with support for type metadata.
 
