@@ -1,8 +1,8 @@
-# Typem(odel)
+# Typem
 
 An easy to use and extend runtime type checker for TypeScript, with support for type metadata.
 
-Checkout the source code yourself, it's just one file. 
+Checkout the source code yourself, it's just one file.
 
 # Installation
 
@@ -11,42 +11,42 @@ Checkout the source code yourself, it's just one file.
 # Usage
 
 ```ts
-const $person = $object({
-    name: $string($lengthRange(1, 32)),
-    age: $union($null(), $number($gt(18))),
-    sex: $union($literal("man"), $literal("woman")),
-    city: $optional(
-        $enum(
-            "Kraków",
-            "Oaxaca",
-            "Moscow",
-            "Kabul",
-            "Baghdad",
-            "Kuala, Lumpur",
-            "Jeddah",
-            "Riyadh",
-            "Mogadishu",
-            "Dubai",
-            "Abu Dhabi",
-            "Sanaa",
-            "Ibadan",
-            "Taizz",
-            "Tehran"
-        )
-    ),
+const tPerson = tObject({
+	name: tString(vLengthRange(1, 32)),
+	age: tUnion(tNull(), tNumber(vGt(18))),
+	sex: tUnion(tLiteral("man"), tLiteral("woman")),
+	city: tOptional(
+		tEnum(
+			"Kraków",
+			"Oaxaca",
+			"Moscow",
+			"Kabul",
+			"Baghdad",
+			"Kuala, Lumpur",
+			"Jeddah",
+			"Riyadh",
+			"Mogadishu",
+			"Dubai",
+			"Abu Dhabi",
+			"Sanaa",
+			"Ibadan",
+			"Taizz",
+			"Tehran"
+		)
+	),
 })
 
-const $memberRole = $enum("admin", "moderator", "user")
-const $member = $intersection(
-    $person,
-    $object({
-        id: $string($length(32)),
-        role: $memberRole,
-    })
+const tMemberRole = tEnum("admin", "moderator", "user")
+const tMember = tIntersection(
+	tPerson,
+	tObject({
+		id: tString(vLength(32)),
+		role: tMemberRole,
+	})
 )
 ```
 
-Type of $member:
+Type of tMember:
 
 ```ts
 {
@@ -65,12 +65,12 @@ You can use if statement to check if value is valid<br/>
 if its valid typescript will infer type of value
 
 ```ts
-if ($member.validate(unknownValue)) {
-    // So you can use it like this with the correct type
-    unknownValue.name // string
+if (tMember.validate(unknownValue)) {
+	// So you can use it like this with the correct type
+	unknownValue.name // string
 } else {
-    unknownValue // unknown
-    unknownValue.name // Error
+	unknownValue // unknown
+	unknownValue.name // Error
 }
 ```
 
@@ -78,14 +78,15 @@ Or you can use parse function to throw error if value is invalid<br/>
 If value is valid typescript will infer type of value
 
 ```ts
-const value = $member.assert(unknownValue) // throws error if value is invalid
+const value = tMember.returnOrThrow(unknownValue) // throws error if value is invalid
 // Then you can use it like this with the correct type
 value.name // string
 ```
 
-Also, you can use `$infer` type to get the type of a `Type`
+Also, you can use `Typem.InferType` type to get the type of a `Type`
+
 ```ts
-type TypeOfMember = $infer<typeof $member>
+type TypeOfMember = Typem.InferType<typeof tMember>
 ```
 
 ## Creating Types and Validators
@@ -94,55 +95,53 @@ You can create your own Types or Validators
 
 ```ts
 class MyClass {}
-const $myClass = $type<MyClass>((value: unknown) => {
-    if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
+const tMyClass = Typem.defineType<MyClass>((value: unknown) => {
+	if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
 })
 
-// $postive validator can only be used with bigint and number types
-const $positive = $validator(<T extends bigint | number>(value: T) => {
-    if (value < 0) throw new Error("Not a positive number")
+// tPostive validator can only be used with bigint and number types
+const vPositive = Typem.defineValidator(<T extends bigint | number>(value: T) => {
+	if (value < 0) throw new Error("Not a positive number")
 })
 
-const $positiveBigInt = $bigint($positive())
-const $positiveNumber = $number($positive())
+const tPositiveBigInt = tBigint(vPositive())
+const tPositiveNumber = tNumber(vPositive())
 ```
 
-If you have a complex type, you can use `$complexType` instead of `$type`<br/>
-Complex types are also used internally to create `$map`, `$union`, `$exclude` and etc.
+If you have a complex type, you can use `tComplexType` instead of `Typem.defineType`<br/>
+Complex types are also used internally to create `tMap`, `tUnion`, `tExclude` and etc.
 
 ```ts
-type Complex = { a: number; b: bigint }
-type TypeComplex<T extends Complex> = Type<T[keyof T]> & {
-    complex: T
+type tField<T> = Typem.Type<T> & {
+	field: {
+		name: string
+		description: string
+	} & ((null extends T ? 1 : undefined extends T ? 1 : 0) extends 1 ? { default?: T } : {})
 }
-const $complex = $complexType(<T extends Complex>(self: TypeComplex<T>, complex: T) => {
-    self.complex = complex
-    return (value: unknown) => {
-        if (
-            !(
-                typeof value === "object" &&
-                value !== null &&
-                "a" in value &&
-                "b" in value &&
-                typeof value.a === "number" &&
-                typeof value.b === "bigint"
-            )
-        )
-            throw new TypeError("Not a valid complex type")
-    }
+export const tField = Typem.defineComplexType(<T>(self: tField<T>, type: Typem.Type<T>, field: (typeof self)["field"]) => {
+	self.field = field
+
+	const field_is = self.is
+	self.is = (...args) => field_is(...args) || type.is(...args)
+
+	return (...args) => type.validateOrThrow(...args)
 })
 
-const myComplex = $complex({ a: 1, b: 2n }) // TypeComplex<{ a: number, b: bigint }>
-myComplex.complex.a // type = 1
-console.log(myComplex.complex.a) // 1
+const tName = tField(tString(), { name: "Name", description: "The name of the field" })
+const tAge = tField(tUnion(tInt(vGte(18)), tNull()), { name: "Age", description: "The age of the field", default: 18 })
 
-const unknownType = myComplex as Type<unknown>
-if (unknownType.instanceOf($complex)) {
-    unknownType.complex.a // type = number
-    console.log(unknownType.complex.a) // 1
-}
+tName.field.name // Name
+tName.field.description // The name of the field
+
+tAge.field.name // Age
+tAge.field.description // The age of the field
+tAge.field.default // 18
+
+const nameValue = "John" as unknown
+const ageValue = null as unknown
+
+const name = tName.returnOrThrow(nameValue) // John
+const age = tAge.returnOrThrow(ageValue) ?? tAge.returnOrThrow(tAge.field.default) // 18
 ```
 
-# Inspired by
-
-https://github.com/DeepDoge/cute-struct
+Something like `tField` can be used for creating schemas for your form generator.
