@@ -108,7 +108,7 @@ const tPositiveBigInt = tBigint(vPositive())
 const tPositiveNumber = tNumber(vPositive())
 ```
 
-If you have a complex type, you can use `tComplexType` instead of `Typem.defineType`<br/>
+If you have a complex type, you can use `Typem.defineComplexType` instead of `Typem.defineType`<br/>
 Complex types are also used internally to create `tMap`, `tUnion`, `tExclude` and etc.
 
 ```ts
