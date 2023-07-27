@@ -121,9 +121,6 @@ type tField<T> = Typem.Type<T> & {
 export const tField = Typem.defineComplexType(<T>(self: tField<T>, type: Typem.Type<T>, field: (typeof self)["field"]) => {
 	self.field = field
 
-	const field_is = self.is
-	self.is = (...args) => field_is(...args) || type.is(...args)
-
 	return (...args) => type.validateOrThrow(...args)
 })
 
