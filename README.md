@@ -116,7 +116,7 @@ type tField<T> = Typem.Type<T> & {
 	field: {
 		name: string
 		description: string
-	} & ((null extends T ? 1 : undefined extends T ? 1 : 0) extends 1 ? { default?: T } : {})
+	}
 }
 export const tField = Typem.defineComplexType(<T>(self: tField<T>, type: Typem.Type<T>, field: (typeof self)["field"]) => {
 	self.field = field
@@ -135,13 +135,12 @@ tName.field.description // The name of the field
 
 tAge.field.name // Age
 tAge.field.description // The age of the field
-tAge.field.default // 18
 
 const nameValue = "John" as unknown
 const ageValue = null as unknown
 
 const name = tName.returnOrThrow(nameValue) // John
-const age = tAge.returnOrThrow(ageValue) ?? tAge.returnOrThrow(tAge.field.default) // 18
+const age = tAge.returnOrThrow(ageValue)
 ```
 
 Something like `tField` can be used for creating schemas for your form generator.
