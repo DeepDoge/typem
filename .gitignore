@@ -13,5 +13,3 @@ dist
 
 # OS generated files
 .DS_Store
-
-/library/experiments.ts
