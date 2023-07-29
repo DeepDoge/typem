@@ -11,12 +11,13 @@ Checkout the source code yourself, it's just one file.
 # Usage
 
 ```ts
-const tPerson = tObject({
-	name: tString(vLengthRange(1, 32)),
-	age: tUnion(tNull(), tNumber(vGt(18))),
-	sex: tUnion(tLiteral("man"), tLiteral("woman")),
-	city: tOptional(
-		tEnum(
+const t_person = t(t_object, {
+	name: t(t_string).t(t_minLength, 1).t(t_maxLength, 32),
+	age: t(t_union, [t(t_number).t(t_gt, 16), t(t_null)]),
+	sex: t(t_union, [t(t_literal, "man"), t(t_literal, "woman")]),
+	city: t(t_union, [
+		t(t_undefined),
+		t(t_oneOf, [
 			"Kraków",
 			"Oaxaca",
 			"Moscow",
@@ -31,113 +32,91 @@ const tPerson = tObject({
 			"Sanaa",
 			"Ibadan",
 			"Taizz",
-			"Tehran"
-		)
-	),
+			"Tehran",
+		]),
+	]),
 })
 
-const tMemberRole = tEnum("admin", "moderator", "user")
-const tMember = tIntersection(
-	tPerson,
-	tObject({
-		id: tString(vLength(32)),
-		role: tMemberRole,
-	})
-)
+const t_memberRole = t(t_oneOf, ["admin", "moderator", "user"])
+const t_member = t(t_intersection, [
+	t_person,
+	t(t_object, {
+		id: t(t_string),
+		role: t_memberRole,
+	}),
+])
 ```
 
-Type of tMember:
+You can use `Typem.Infer<typeof t_member>` to get type of it.
+
+```ts
+type Member = Typem.InferType<typeof t_member>
+```
+
+The returned type fill look like this:
 
 ```ts
 {
+    id: string
     name: string
     age: number | null
     sex: 'male' | 'female'
     city?: 'Kraków' | 'Oaxaca' | 'Moscow' | 'Kabul' | 'Baghdad' | 'Kuala, Lumpur' |
     'Jeddah' | 'Riyadh' | 'Mogadishu' | 'Dubai' | 'Abu Dhabi' | 'Sanaa' | 'Ibadan' |
-    'Taizz' | 'Tehran' | null | undefined
-    id: string
+    'Taizz' | 'Tehran' | undefined
     role: 'admin' | 'moderator' | 'user'
 }
 ```
 
-You can use if statement to check if value is valid<br/>
-if its valid typescript will infer type of value
+You can validate a value like above, by using `returnOrThrow()` function
 
 ```ts
-if (tMember.validate(unknownValue)) {
-	// So you can use it like this with the correct type
-	unknownValue.name // string
-} else {
-	unknownValue // unknown
-	unknownValue.name // Error
-}
-```
-
-Or you can use parse function to throw error if value is invalid<br/>
-If value is valid typescript will infer type of value
-
-```ts
-const value = tMember.returnOrThrow(unknownValue) // throws error if value is invalid
+const value = t_member.returnOrThrow(unknownValue) // throws error if value is invalid
 // Then you can use it like this with the correct type
 value.name // string
 ```
 
-Also, you can use `Typem.InferType` type to get the type of a `Type`
+## Creating Types
+
+You can create your own `Type`s
 
 ```ts
-type TypeOfMember = Typem.InferType<typeof tMember>
-```
-
-## Creating Types and Validators
-
-You can create your own Types or Validators
-
-```ts
-class MyClass {}
-const tMyClass = Typem.defineType<MyClass>((value: unknown) => {
+function t_myClass(value: unknown): MyClass {
 	if (!(value instanceof MyClass)) throw new Error("Not a MyClass")
-})
-
-// tPostive validator can only be used with bigint and number types
-const vPositive = Typem.defineValidator(<T extends bigint | number>(value: T) => {
-	if (value < 0) throw new Error("Not a positive number")
-})
-
-const tPositiveBigInt = tBigint(vPositive())
-const tPositiveNumber = tNumber(vPositive())
+	return value
+}
 ```
 
-If you have a complex type, you can use `Typem.defineComplexType` instead of `Typem.defineType`<br/>
-Complex types are also used internally to create `tMap`, `tUnion`, `tExclude` and etc.
+You can also chain types together
 
 ```ts
-type tField<T> = Typem.Type<T> & {
-	field: {
-		name: string
-		description: string
-	}
+// This will both can be chained after a type that returns `bigint`` or `number``
+function t_positive<T extends bigint | number>(value: T): T {
+	if (value < 0) throw new Error("Not a positive number")
+	return value
 }
-export const tField = Typem.defineComplexType(<T>(self: tField<T>, type: Typem.Type<T>, field: (typeof self)["field"]) => {
-	self.field = field
 
-	return (...args) => type.validateOrThrow(...args)
-})
+const t_positiveBigInt = t(t_bigint).t(t_positive) // Type<unknown, bigint>
+const t_positiveNumber = t(t_number).t(t_positive) // Type<unknown, number>
 
-const tName = tField(tString(), { name: "Name", description: "The name of the field" })
-const tAge = tField(tUnion(tInt(vGte(18)), tNull()), { name: "Age", description: "The age of the field", default: 18 })
-
-tName.field.name // Name
-tName.field.description // The name of the field
-
-tAge.field.name // Age
-tAge.field.description // The age of the field
-
-const nameValue = "John" as unknown
-const ageValue = null as unknown
-
-const name = tName.returnOrThrow(nameValue) // John
-const age = tAge.returnOrThrow(ageValue)
+const foo = t(t_string).t(t_positive) // Error
 ```
 
-Something like `tField` can be used for creating schemas for your form generator.
+You can create types with arguments
+
+```ts
+function t_minLength(value: string, minLength: number): string {
+	if (value.length < minLength) throw new Error("Too short")
+	return value
+}
+
+const foo = t(t_string).t(t_minLength, 2) // Type<unknown, string>
+```
+
+## Type Metadata
+
+Not implemented yet.
+
+It will let you check types, their chains, and their properties/arguments.
+
+So you can generate UI for them, or use them for other purposes such as generating databases.
